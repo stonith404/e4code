@@ -178,7 +178,7 @@ function reviewGuideStack(
   ];
 }
 
-function reviewGuidePreferences(instructions: string | undefined): string[] {
+export function reviewGuidePreferences(instructions: string | undefined): string[] {
   const trimmed = instructions?.trim();
   return trimmed
     ? [
