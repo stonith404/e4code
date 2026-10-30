@@ -92,10 +92,19 @@ export interface ReviewGuideGenerationInput {
   modelSelection: ModelSelection;
 }
 
+export interface LocalReviewGuideGenerationInput {
+  cwd: string;
+  baseCommit: string;
+  /** Describes local changes; its presence selects the local guide prompt over the pull request one. */
+  local: { scope: string; base: string };
+  instructions?: string | undefined;
+  modelSelection: ModelSelection;
+}
+
 export type ReviewGuideGenerationResult = Omit<
   PullRequestReviewGuide,
   "headSha" | "generatedAt" | "modelSelection"
->;
+> & { readonly summary?: string };
 
 export interface ProviderTextGeneration {
   readonly generateCommitMessage: (
@@ -115,6 +124,6 @@ export interface ProviderTextGeneration {
   ) => Effect.Effect<ThreadTitleGenerationResult, TextGenerationError>;
 
   readonly generateReviewGuide: (
-    input: ReviewGuideGenerationInput,
+    input: ReviewGuideGenerationInput | LocalReviewGuideGenerationInput,
   ) => Effect.Effect<ReviewGuideGenerationResult, TextGenerationError>;
 }
