@@ -405,6 +405,11 @@ import {
   SourceControlSignInPrompt,
   SourceControlSignInResult,
 } from "./sourceControl.ts";
+import {
+  McpServerOAuthError,
+  McpServerOAuthStartInput,
+  McpServerOAuthStartResult,
+} from "./mcpServer.ts";
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
@@ -598,6 +603,7 @@ export const WS_METHODS = {
   sourceControlSignInStart: "sourceControl.signInStart",
   sourceControlSignInWait: "sourceControl.signInWait",
   sourceControlSignInCancel: "sourceControl.signInCancel",
+  mcpServerOAuthStart: "mcpServers.oauthStart",
   sourceControlAppAccess: "sourceControl.appAccess",
   sourceControlStarred: "sourceControl.starred",
   projectCloneStart: "projectClone.start",
@@ -1242,6 +1248,13 @@ const WsSourceControlSignInCancelRpc = Rpc.make(WS_METHODS.sourceControlSignInCa
   payload: SourceControlSignInInput,
   success: Schema.Void,
   error: Schema.Union([SourceControlSignInError, EnvironmentAuthorizationError]),
+});
+
+// The browser finishes on the environment's OAuth callback, which saves the session in settings.
+const WsMcpServerOAuthStartRpc = Rpc.make(WS_METHODS.mcpServerOAuthStart, {
+  payload: McpServerOAuthStartInput,
+  success: McpServerOAuthStartResult,
+  error: Schema.Union([McpServerOAuthError, EnvironmentAuthorizationError]),
 });
 
 const WsSourceControlAppAccessRpc = Rpc.make(WS_METHODS.sourceControlAppAccess, {
@@ -2096,6 +2109,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSourceControlSignInStartRpc,
   WsSourceControlSignInWaitRpc,
   WsSourceControlSignInCancelRpc,
+  WsMcpServerOAuthStartRpc,
   WsSourceControlAppAccessRpc,
   WsSourceControlStarredRpc,
   WsProjectCloneStartRpc,
