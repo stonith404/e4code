@@ -31,6 +31,7 @@ import {
   CloudDownloadIcon,
   CloudUploadIcon,
   FileDiffIcon,
+  FileSearchIcon,
   GitBranchPlusIcon,
   GitCommitIcon,
   InfoIcon,
@@ -53,6 +54,7 @@ import {
   type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
   resolveChangesTotals,
+  resolveChangesRowStat,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveGitActionProgressPresentation,
@@ -90,7 +92,12 @@ import {
   useVcsInitAction,
   useVcsPullAction,
 } from "../state/sourceControlActions";
-import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities";
+import {
+  useThreadCheckpointSummaries,
+  useQuietThreadProjection,
+  useQuietThreadShell,
+} from "~/state/entities";
+import { selectThreadDiffPanelSelection, useDiffPanelStore } from "~/diffPanelStore";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
@@ -121,6 +128,7 @@ interface GitActionsControlProps {
   showActions?: boolean;
   showChanges?: boolean;
   onOpenChanges?: () => void;
+  onOpenReview?: () => void;
 }
 
 interface PendingDefaultBranchAction {
@@ -932,6 +940,7 @@ export default function GitActionsControl({
   showActions = true,
   showChanges = true,
   onOpenChanges,
+  onOpenReview,
 }: GitActionsControlProps) {
   const panelAnchorRef = useRef<HTMLDivElement | null>(null);
   const updateThreadMetadata = useAtomCommand(
@@ -1049,13 +1058,25 @@ export default function GitActionsControl({
   const isRepo = gitStatus?.isRepo ?? true;
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
+  const diffSelection = useDiffPanelStore((state) =>
+    selectThreadDiffPanelSelection(state.byThreadKey, activeThreadRef),
+  );
+  const turnSummaries = useThreadCheckpointSummaries(
+    diffSelection.kind === "turn" ? activeThreadRef : null,
+  );
+  const changesRowStat = resolveChangesRowStat(
+    diffSelection,
+    gitStatusForActions ?? null,
+    turnSummaries,
+  );
   const resolvedChangesTotals = resolveChangesTotals(gitStatusForActions);
   const changesTotals = resolvedChangesTotals ?? { insertions: 0, deletions: 0 };
-  const changesBaseLabel = resolvedChangesTotals
-    ? resolvedChangesTotals.baseRef === null
-      ? "Uncommitted"
-      : `vs ${resolvedChangesTotals.baseRef}`
-    : null;
+  const changesBaseLabel =
+    changesRowStat.label === "Changes" && resolvedChangesTotals
+      ? resolvedChangesTotals.baseRef === null
+        ? "Uncommitted"
+        : `vs ${resolvedChangesTotals.baseRef}`
+      : null;
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1640,7 +1661,7 @@ export default function GitActionsControl({
         >
           <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-            <span className="shrink-0">Changes</span>
+            <span className="shrink-0">{changesRowStat.label}</span>
             {changesBaseLabel ? (
               <Tooltip>
                 <TooltipTrigger
@@ -1658,24 +1679,36 @@ export default function GitActionsControl({
             <span className="ml-auto flex shrink-0 items-baseline gap-2 ps-2 font-mono tabular-nums">
               <span
                 className={
-                  changesTotals.insertions
+                  changesRowStat.insertions
                     ? "text-diff-addition-foreground"
                     : "text-muted-foreground"
                 }
               >
-                +{formatDiffCount(changesTotals.insertions)}
+                +{formatDiffCount(changesRowStat.insertions)}
               </span>
               <span
                 className={
-                  changesTotals.deletions
+                  changesRowStat.deletions
                     ? "text-diff-deletion-foreground"
                     : "text-muted-foreground"
                 }
               >
-                -{formatDiffCount(changesTotals.deletions)}
+                -{formatDiffCount(changesRowStat.deletions)}
               </span>
             </span>
           </span>
+        </ThreadDetailsControl>
+      ) : null}
+      {onOpenReview && isRepo && !quietEmptyDraft ? (
+        <ThreadDetailsControl
+          type="button"
+          variant="ghost"
+          size="sm"
+          part="row"
+          onClick={onOpenReview}
+        >
+          <FileSearchIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
+          <span className={cn("flex-1 text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>Review</span>
         </ThreadDetailsControl>
       ) : null}
 
