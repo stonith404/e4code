@@ -45,6 +45,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileDiff,
+  FileSearch,
   Files,
   Globe2,
   MessagesSquare,
@@ -145,6 +146,7 @@ export interface RightPanelTabsProps {
   onAddBrowserInProfile: (profileId: string) => void;
   onAddTerminal: () => void;
   onAddDiff: () => void;
+  onAddReview: () => void;
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
@@ -329,6 +331,7 @@ function RightPanelEmptyState(props: {
   browserProfiles: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   onAddTerminal: () => void;
   onAddDiff: () => void;
+  onAddReview: () => void;
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
@@ -381,6 +384,14 @@ function RightPanelEmptyState(props: {
       available: props.diffAvailable,
       disabledReason: messages(SURFACE_UNAVAILABLE_HINTS.diff),
       onClick: props.onAddDiff,
+    },
+    {
+      label: msg("Review"),
+      icon: FileSearch,
+      shortcut: "R",
+      available: props.diffAvailable,
+      disabledReason: messages(SURFACE_UNAVAILABLE_HINTS.diff),
+      onClick: props.onAddReview,
     },
     {
       label: msg("Pull request"),
@@ -592,6 +603,8 @@ function surfaceTitle(
   switch (surface.kind) {
     case "diff":
       return resolve(msg("Diff"));
+    case "review":
+      return resolve(msg("Review"));
     case "files":
       return resolve(msg("Files"));
     case "file":
@@ -679,6 +692,8 @@ function SurfaceIcon({
       return <PreviewFavicon capturedUrl={previewCapturedUrl} url={previewUrl} />;
     case "diff":
       return <FileDiff className="size-3 shrink-0" />;
+    case "review":
+      return <FileSearch className="size-3 shrink-0" />;
     case "files":
       return <Files className="size-3 shrink-0" />;
     case "file":
@@ -1202,6 +1217,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddDiff,
     },
     {
+      label: msg("Review"),
+      icon: FileSearch,
+      shortcut: "R",
+      available: props.diffAvailable,
+      disabledReason: messages(SURFACE_DISABLED_REASONS.diff),
+      onClick: props.onAddReview,
+    },
+    {
       label: msg("Pull request"),
       icon: PullRequestGlyph.pullRequest,
       shortcut: "P",
@@ -1638,6 +1661,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             browserProfiles={browserProfiles}
             onAddTerminal={props.onAddTerminal}
             onAddDiff={props.onAddDiff}
+            onAddReview={props.onAddReview}
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
