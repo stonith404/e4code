@@ -58,3 +58,16 @@ A **Review** surface in the right panel (`+` menu, `R`, or the thread details **
 
 Review's Unpushed scope follows upstream's non-minimizing diff algorithm too. UI copy uses upstream's translation hooks and catalogs; scope identity stays independent of translated labels.
 
+## feat(settings): manage MCP servers for Claude and Codex
+
+Settings → MCP servers adds, edits, toggles and removes MCP servers per environment, and picks which Claude and Codex instances get each one.
+
+- `mcpServers` in server settings (`packages/contracts/src/mcpServer.ts`): stdio or Streamable HTTP. Env, header, client secret and session values go to the secret store. Patches need the providers-manage scope, since a stdio server is a host command.
+- The Claude and Codex adapters add the servers beside `t3-code` when a session starts, including when Codex reloads an idle thread for an MCP app request. Both `t3-code` and Codex's direct-only `t3-code-direct` registration are reserved names. Claude's T3 instructions now key on the `t3-code` entry, not on any MCP server being present.
+- OAuth: `McpServers` discovers metadata (RFC 9728/8414), runs PKCE through `/oauth/mcp-servers/callback`, keeps the session in `oauthSession` and refreshes it. Without a client ID it signs in as the client ID metadata document at `https://e4.elias.li/mcp-client.json` when the server accepts one and the redirect is loopback, and otherwise registers a client per sign-in (RFC 7591). Providers reach OAuth servers through `/mcp-servers/<name>` with their T3 session credential, and the proxy adds the access token.
+- `projectEnabled` overrides `enabled` per project. `McpServers` reads the thread's project only when some server has an override, both for session config and the OAuth proxy. In a project scope the settings switch writes the override, and a server added there starts off environment-wide.
+- With several environments in the settings scope, `McpServers` merges their lists by name and writes each change to every environment. `draftForEnvironment` drops saved secrets an environment does not hold, and sign-in stays per environment.
+- Web only; the mobile app has no MCP server screen.
+
+UI copy and draft validation use upstream's translated settings APIs and catalogs, with English fallback for new entries.
+
