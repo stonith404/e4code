@@ -138,6 +138,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.sourceControlSignInStart]: "source-control",
   [WS_METHODS.sourceControlSignInWait]: "source-control",
   [WS_METHODS.sourceControlSignInCancel]: "source-control",
+  [WS_METHODS.mcpServerOAuthStart]: "server",
   [WS_METHODS.sourceControlAppAccess]: "source-control",
   [WS_METHODS.projectCloneStart]: "source-control",
   [WS_METHODS.projectCloneCancel]: "source-control",
