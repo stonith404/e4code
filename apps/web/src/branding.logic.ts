@@ -22,7 +22,7 @@ export function resolveWebAppStageLabel(input: {
   readonly development: boolean;
 }): string {
   return (
-    resolveHostedAppChannelLabel(input.hostedAppChannel) ?? (input.development ? "Dev" : "Beta")
+    resolveHostedAppChannelLabel(input.hostedAppChannel) ?? (input.development ? "Dev" : "Latest")
   );
 }
 
