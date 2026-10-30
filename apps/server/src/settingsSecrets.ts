@@ -250,6 +250,29 @@ function mapSecretFieldGroups(
       ) as SimlockDeviceHostConfig,
   );
 
+  const mapSecret = (secretName: string, value: string) => {
+    // Individual fields preserve case-sensitive env keys and existing secret slot names.
+    return mapFields({ value }, ["value"], () => secretName).value as string;
+  };
+  const mapSecretMap = (prefix: string, values: Readonly<Record<string, string>>) =>
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        mapSecret(`${prefix}-${encode(key)}`, value),
+      ]),
+    );
+  const mcpServers = settings.mcpServers.map((server) => {
+    const prefix = `mcp-server-${encode(server.name)}`;
+    return server.transport === "stdio"
+      ? { ...server, env: mapSecretMap(`${prefix}-env`, server.env) }
+      : {
+          ...server,
+          headers: mapSecretMap(`${prefix}-header`, server.headers),
+          oauthClientSecret: mapSecret(`${prefix}-oauth-client-secret`, server.oauthClientSecret),
+          oauthSession: mapSecret(`${prefix}-oauth-session`, server.oauthSession),
+        };
+  });
+
   return {
     ...settings,
     cloudSpeechCredentials: mapFields(
@@ -263,6 +286,7 @@ function mapSecretFieldGroups(
     textGenerators,
     easDeviceHosts,
     simlockDeviceHosts,
+    mcpServers,
   };
 }
 
@@ -372,6 +396,22 @@ export function withoutRedirectedSecrets(
         rebound(generator, current.textGenerators[id as ProviderInstanceId], "apiKey", "baseUrl"),
       ]),
     ) as ServerSettings["textGenerators"],
+    mcpServers: next.mcpServers.map((server) => {
+      const previous = current.mcpServers.find((saved) => saved.name === server.name);
+      if (server.transport !== "http" || previous?.transport !== "http") return server;
+      const moved = destination(previous.url) !== destination(server.url);
+      return {
+        ...server,
+        headers: Object.fromEntries(
+          Object.entries(server.headers).map(([key, value]) => [
+            key,
+            moved && kept(value, previous.headers[key]) ? "" : value,
+          ]),
+        ),
+        oauthClientSecret: rebound(server, previous, "oauthClientSecret", "url").oauthClientSecret,
+        oauthSession: rebound(server, previous, "oauthSession", "url").oauthSession,
+      };
+    }),
     simlockDeviceHosts: next.simlockDeviceHosts.map((host) =>
       rebound(host, simlockHosts.get(host.id), "agentToken", "gatewayUrl"),
     ),
