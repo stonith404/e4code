@@ -128,12 +128,17 @@ test("fails instead of releasing when GitHub cannot supply release state", async
   await assert.rejects(shouldReleaseNightly(options), /GitHub unavailable/);
 });
 
-for (const status of ["behind", "diverged"]) {
+for (const status of ["identical", "behind"]) {
   test(`skips a candidate commit that is ${status} relative to the last nightly`, async () => {
     const { options } = fixture({ comparisonStatus: status });
     assert.equal(await shouldReleaseNightly(options), false);
   });
 }
+
+test("releases a candidate commit that diverged from the last nightly after a rebase", async () => {
+  const { options } = fixture({ comparisonStatus: "diverged" });
+  assert.equal(await shouldReleaseNightly(options), true);
+});
 
 const { resolveLatestNightlyCommit } = require("./check-nightly-release.cjs");
 
