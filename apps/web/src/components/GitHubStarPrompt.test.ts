@@ -1,20 +1,28 @@
 import { EnvironmentId } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
+import type { MouseEvent } from "react";
 
 import type { toastManager } from "./ui/toast";
 
-const { add, starred } = vi.hoisted(() => ({
+const { add, starred, openExternal, checkStarred } = vi.hoisted(() => ({
   add: vi.fn<typeof toastManager.add>(),
   starred: { value: false, duringCheck: () => {} },
+  openExternal: vi.fn(async () => {}),
+  checkStarred: vi.fn(),
 }));
 vi.mock("./ui/toast", () => ({ toastManager: { add, close: vi.fn() } }));
 vi.mock("../rpc/atomRegistry", () => ({ appAtomRegistry: {} }));
 vi.mock("../state/sourceControl", () => ({ sourceControlEnvironment: { checkStarred: {} } }));
 vi.mock("@t3tools/client-runtime/state/runtime", () => ({
-  runAtomCommand: async () => {
+  runAtomCommand: async (...args: unknown[]) => {
+    checkStarred(...args);
     starred.duringCheck();
     return { _tag: "Success", value: starred.value };
   },
+}));
+
+vi.mock("../localApi", () => ({
+  readLocalApi: () => ({ shell: { openExternal } }),
 }));
 
 const environmentId = EnvironmentId.make("environment-1");
@@ -44,6 +52,20 @@ async function startSession() {
 }
 
 describe("recordPromptSent", () => {
+  it("asks for a star on the E4 fork, not upstream", async () => {
+    setup({ sent: 5 });
+    checkStarred.mockClear();
+    openExternal.mockClear();
+    await (await startSession()).send();
+    expect(add.mock.lastCall?.[0].title).toBe("Enjoying E4 Code?");
+    expect(checkStarred.mock.lastCall?.[2]).toMatchObject({
+      input: { repository: "stonith404/e4code" },
+    });
+    add.mock.lastCall?.[0].actionProps?.onClick?.({} as MouseEvent<HTMLButtonElement>);
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/stonith404/e4code");
+    vi.unstubAllGlobals();
+  });
+
   it("asks after five prompts, once per session, and never again once closed", async () => {
     setup();
     let session = await startSession();
