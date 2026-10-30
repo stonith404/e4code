@@ -1,4 +1,8 @@
-import type { GitStatusEntry } from "@pierre/trees";
+import type {
+  FileTreeRowDecoration,
+  FileTreeRowDecorationContext,
+  GitStatusEntry,
+} from "@pierre/trees";
 import { FileTree, useFileTree, useFileTreeSelector } from "@pierre/trees/react";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -28,6 +32,8 @@ interface DiffFileTreeProps {
   readonly selectedPath?: string | null;
   readonly revealRequestId?: number;
   readonly ariaLabel: string;
+  /** Row decorations by file path. */
+  readonly decorations?: ReadonlyMap<string, FileTreeRowDecoration>;
   readonly headerAccessory?: ReactNode;
   readonly footer?: ReactNode;
   readonly className?: string;
@@ -39,6 +45,7 @@ export function DiffFileTree({
   selectedPath = null,
   revealRequestId = 0,
   ariaLabel,
+  decorations,
   headerAccessory,
   footer,
   className,
@@ -79,6 +86,15 @@ export function DiffFileTree({
     }
   });
 
+  const decorateRow = useStableCallback(({ item, row }: FileTreeRowDecorationContext) =>
+    row.kind === "directory"
+      ? null
+      : (decorations?.get(presented.selectionPath(item.path)) ?? null),
+  );
+  const decorationSignature = [...(decorations ?? [])]
+    .map(([path, decoration]) => `${path}:${"icon" in decoration ? decoration.icon : ""}`)
+    .join("\0");
+
   const { model } = useFileTree({
     density: "compact",
     flattenEmptyDirectories: true,
@@ -86,6 +102,7 @@ export function DiffFileTree({
     icons,
     onSelectionChange: handleSelectionChange,
     paths: [],
+    renderRowDecoration: decorateRow,
     search: false,
     sort: ordering.sort,
     unsafeCSS: PIERRE_TREE_UNSAFE_CSS,
@@ -98,6 +115,14 @@ export function DiffFileTree({
   useEffect(() => {
     model.setIcons(icons);
   }, [icons, model]);
+
+  const renderedDecorationsRef = useRef("");
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- makes the Pierre tree model re-render row decorations when they change
+  useEffect(() => {
+    if (renderedDecorationsRef.current === decorationSignature) return;
+    renderedDecorationsRef.current = decorationSignature;
+    model.setComposition(model.getComposition());
+  }, [decorationSignature, model]);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- applies path updates, ordering and git status to the imperative Pierre file tree model
   useEffect(() => {
