@@ -3,7 +3,7 @@
 E4 Code is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code), kept in sync with upstream by an Umpteenth job. Builds are on [GitHub Releases](https://github.com/stonith404/e4code/releases). It adds:
 
 - **Review**: review a thread's local changes file by file, with Reviewed and Check later marks, a generated review guide, and fixes typed straight into the diff.
-- **MCP servers**: Settings → MCP servers manages extra MCP servers for Claude and Codex, including OAuth sign-in.
+- **MCP servers**: Settings → MCP servers manages extra MCP servers for Claude and Codex, per environment or per project, including OAuth sign-in.
 
 Details for each patch are in [FORK_CHANGES.md](./FORK_CHANGES.md). The rest of this README is upstream's.
 
