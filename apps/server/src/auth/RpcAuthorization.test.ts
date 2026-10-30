@@ -328,7 +328,7 @@ describe("settings mutation authorization", () => {
   );
 
   it.effect(
-    "does not let a settings grant manage providers or turn off T3 Connect device approval",
+    "does not let a settings grant manage providers, MCP servers, or T3 Connect device approval",
     () =>
       Effect.gen(function* () {
         let handled = false;
@@ -381,6 +381,11 @@ describe("settings mutation authorization", () => {
               ],
             },
           }).pipe(Effect.flip),
+        ).toMatchObject({ requiredPermission: AuthProvidersManageScope });
+        expect(
+          yield* client[WS_METHODS.serverUpdateSettings]({ patch: { mcpServers: [] } }).pipe(
+            Effect.flip,
+          ),
         ).toMatchObject({ requiredPermission: AuthProvidersManageScope });
         expect(handled).toBe(false);
       }),
