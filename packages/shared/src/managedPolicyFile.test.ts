@@ -85,6 +85,17 @@ const read = (
   );
 
 describe("readManagedPolicy", () => {
+  it("uses E4-specific policy locations so T3 Code can be managed separately", () => {
+    assert.equal(managedPolicyPath("darwin"), "/Library/Application Support/E4Code/policy.json");
+    assert.equal(managedPolicyPath("win32"), "C:\\Program Files\\E4Code\\policy.json");
+    assert.equal(managedPolicyPath("linux"), "/etc/e4code/policy.json");
+    assert.equal(
+      MACOS_MANAGED_PREFERENCES_PATH,
+      "/Library/Managed Preferences/com.eliasschneider.e4code.plist",
+    );
+    assert.equal(WINDOWS_POLICY_KEY, "HKLM\\SOFTWARE\\Policies\\EliasSchneider\\E4Code");
+  });
+
   it.effect("reads a macOS configuration profile, and refuses one beside a policy file", () =>
     Effect.gen(function* () {
       const plutil = { "/usr/bin/plutil": { stdout: policy, exitCode: 0 } };

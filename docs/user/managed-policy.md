@@ -1,8 +1,8 @@
 # Managed policy
 
-A managed policy lets an administrator configure T3 Code for every user on a machine. It sets
+A managed policy lets an administrator configure E4 Code for every user on a machine. It sets
 defaults and locks for settings, and limits such as the broadest permission mode or which
-providers may run. The T3 Code server on the machine enforces it for every app that connects:
+providers may run. The E4 Code server on the machine enforces it for every app that connects:
 the desktop app, a browser, or the mobile app.
 
 ## Roll out a policy
@@ -11,7 +11,7 @@ the desktop app, a browser, or the mobile app.
 2. Run `t3 policy check policy.json`. It prints what the policy will do, or what is wrong with it.
 3. Deploy the policy to each machine with your device management tool, in
    [one of the supported places](#where-the-policy-goes).
-4. Restart T3 Code on the machine. The server reads the policy only when it starts.
+4. Restart E4 Code on the machine. The server reads the policy only when it starts.
 5. Run `t3 policy show` on the machine to
    [check what the server loaded](#check-what-the-server-loaded).
 
@@ -38,7 +38,7 @@ The desktop app includes the `t3` command; see [The `t3` command](./install.md#t
 
 `schemaVersion` and `organization` are required. Users see the organization's name in Settings
 and beside each control the policy locks, with a link to `supportUrl` if you set one. [`settings`](#settings)
-sets defaults and locks, and [`limits`](#limits) restricts what T3 Code may do.
+sets defaults and locks, and [`limits`](#limits) restricts what E4 Code may do.
 
 Every user on the machine can read the policy, so do not put credentials in it.
 
@@ -46,72 +46,72 @@ Every user on the machine can read the policy, so do not put credentials in it.
 
 Use one of these per machine:
 
-| OS      | Native policy                                                       | Policy file                                       |
-| ------- | ------------------------------------------------------------------- | ------------------------------------------------- |
-| macOS   | Configuration profile for `com.t3tools.t3code`                      | `/Library/Application Support/T3Code/policy.json` |
-| Windows | `Policy` string value under `HKLM\SOFTWARE\Policies\T3Tools\T3Code` | `C:\Program Files\T3Code\policy.json`             |
-| Linux   |                                                                     | `/etc/t3code/policy.json`                         |
+| OS      | Native policy                                                              | Policy file                                       |
+| ------- | -------------------------------------------------------------------------- | ------------------------------------------------- |
+| macOS   | Configuration profile for `com.eliasschneider.e4code`                      | `/Library/Application Support/E4Code/policy.json` |
+| Windows | `Policy` string value under `HKLM\SOFTWARE\Policies\EliasSchneider\E4Code` | `C:\Program Files\E4Code\policy.json`             |
+| Linux   |                                                                            | `/etc/e4code/policy.json`                         |
 
-T3 Code does not merge sources. If a machine has both a native policy and a policy file, T3 Code
+E4 Code does not merge sources. If a machine has both a native policy and a policy file, E4 Code
 refuses to start until you remove one.
 
 **Policy file.** Copy the JSON to the path for the OS. Make it and its folder writable only by
 administrators.
 
 **macOS configuration profile.** Add a custom settings payload for the preference domain
-`com.t3tools.t3code`. The payload's keys are the policy's top-level keys (`schemaVersion`,
+`com.eliasschneider.e4code`. The payload's keys are the policy's top-level keys (`schemaVersion`,
 `organization`, `supportUrl`, `settings`, `limits`); JSON objects become dictionaries and lists
 become arrays. To make the payload from a policy file you checked, run
-`plutil -convert xml1 -o com.t3tools.t3code.plist policy.json` and upload the result. Install it as
-a device profile, since T3 Code ignores user profiles, and deploy only one profile for this domain.
+`plutil -convert xml1 -o com.eliasschneider.e4code.plist policy.json` and upload the result. Install it as
+a device profile, since E4 Code ignores user profiles, and deploy only one profile for this domain.
 A profile cannot hold `null`, so use a policy file if a setting's value must be `null`.
 
 **Windows registry.** Set the `Policy` value (`REG_SZ`) to the whole policy as one line of JSON,
-from Group Policy Preferences or an Intune script. T3 Code reads it through the Windows registry
+from Group Policy Preferences or an Intune script. E4 Code reads it through the Windows registry
 API, so it works where registry tools such as `reg.exe` are blocked for users. In PowerShell, as an
 administrator:
 
 ```powershell
 $json = (Get-Content -Raw -Encoding UTF8 policy.json) -replace '\r?\n\s*', ''
-New-Item -Path HKLM:\SOFTWARE\Policies\T3Tools\T3Code -Force | Out-Null
-Set-ItemProperty -Path HKLM:\SOFTWARE\Policies\T3Tools\T3Code -Name Policy -Value $json -Type String
+New-Item -Path HKLM:\SOFTWARE\Policies\EliasSchneider\E4Code -Force | Out-Null
+Set-ItemProperty -Path HKLM:\SOFTWARE\Policies\EliasSchneider\E4Code -Name Policy -Value $json -Type String
 ```
 
 ## Check what the server loaded
 
-Run `t3 policy show` as the user who runs T3 Code. It prints the installed policy and its
+Run `t3 policy show` as the user who runs E4 Code. It prints the installed policy and its
 fingerprint, then says whether the running server loaded that policy or an older one. The server
-reads the policy only when it starts, so "Restart T3 Code to apply the installed policy" means it
+reads the policy only when it starts, so "Restart E4 Code to apply the installed policy" means it
 still enforces the old one. In Settings, users see that your organization manages the environment,
 and each locked control shows **Managed by**.
 
 ## Change or remove a policy
 
-After you deploy, change, or remove a policy, restart the T3 Code server on the machine: quit and
+After you deploy, change, or remove a policy, restart the E4 Code server on the machine: quit and
 reopen the desktop app, or run `t3 service restart` for the
 [background service](./background-service.md). Reconnecting a phone or browser does not reload the
 policy.
 
 To remove a policy, delete the file, remove the profile, or delete the registry value, then restart
-the server. Users get back the settings they had chosen, since T3 Code never writes policy values
+the server. Users get back the settings they had chosen, since E4 Code never writes policy values
 into them.
 
-## When T3 Code refuses to start
+## When E4 Code refuses to start
 
-T3 Code refuses to start rather than run with a policy it cannot fully enforce. That includes a
+E4 Code refuses to start rather than run with a policy it cannot fully enforce. That includes a
 policy it cannot read or parse, a setting it does not know, a value of the wrong type, a key this
 version does not support, or a machine with both a native policy and a file. The error names where
 the policy came from and what is wrong.
 
 `t3 policy check` catches the same problems in a JSON file. For a profile or registry value, check
 the JSON before you convert it. A policy written for a newer version can use keys an older one
-cannot enforce, so upgrade T3 Code before you deploy a policy that uses them.
+cannot enforce, so upgrade E4 Code before you deploy a policy that uses them.
 
 ## Settings
 
 Each key under `settings` is a setting's path in the server's `settings.json`, such as
-`storageCleanup.logsAfterDays`. To find a path, change the setting in T3 Code and look in
-`settings.json` under `~/.t3/userdata`.
+`storageCleanup.logsAfterDays`. To find a path, change the setting in E4 Code and look in
+`settings.json` under `~/.e4/userdata`.
 
 - `"locked": false` sets a default. It applies wherever the user has not chosen a value of their
   own, and users can change it.
@@ -127,18 +127,18 @@ A few settings need care:
   manage one field inside it.
 - `defaultRuntimeMode` cannot be broader than [`maxRuntimeMode`](#permission-modes).
 - `worktreeCleanup`, which projects can also set, overrides the `worktree` rules in
-  `storageCleanup`. Lock it along with those rules; T3 Code refuses a policy that locks only the
+  `storageCleanup`. Lock it along with those rules; E4 Code refuses a policy that locks only the
   rules.
 - Manage `idleCompaction`, not the older `compactIdleThreads`. A Claude instance's own idle
   compaction choice still wins over `idleCompaction`.
 - A provider instance's fields override each other, so lock `providerInstances.<id>` as a whole,
-  or pin single fields with [`providers.instances`](#providers). T3 Code refuses a lock on one
+  or pin single fields with [`providers.instances`](#providers). E4 Code refuses a lock on one
   field inside an instance. A whole-instance lock covers only that instance; to cover every
   instance of a provider, use `providers.instances`.
 
 ## Limits
 
-`limits` restricts what T3 Code may do. Leave a key out to keep T3 Code's normal behavior.
+`limits` restricts what E4 Code may do. Leave a key out to keep E4 Code's normal behavior.
 
 ```json
 {
@@ -175,17 +175,17 @@ threads start at the limit when the user's default is above it.
 
 With `maxRuntimeMode` set, you own each provider's launch settings: binary path, launch arguments,
 config home, and the environment variables set on each provider. They come from
-[`providers.instances`](#providers) or T3 Code's defaults, and users cannot change them, because a
+[`providers.instances`](#providers) or E4 Code's defaults, and users cannot change them, because a
 wrapper script, a launch flag, or a variable such as `NODE_OPTIONS` could otherwise turn off the
 provider's approvals. Pin the variables your users need, such as a gateway URL, in
-`providers.instances`. Variables in the environment that starts T3 Code itself still reach
+`providers.instances`. Variables in the environment that starts E4 Code itself still reach
 providers.
 
 ACP agents' own mode menus have no effect under `maxRuntimeMode`, except Antigravity's, whose modes
-T3 Code can place under the limit. Users still choose which ACP Registry agent runs; leave
+E4 Code can place under the limit. Users still choose which ACP Registry agent runs; leave
 `acpRegistry` out of `allowedDrivers` to stop that.
 
-The limit decides which modes T3 Code asks the provider for. It is not a sandbox; see
+The limit decides which modes E4 Code asks the provider for. It is not a sandbox; see
 [What a policy does not cover](#what-a-policy-does-not-cover).
 
 ### Clients and T3 Connect
@@ -197,7 +197,7 @@ The limit decides which modes T3 Code asks the provider for. It is not a sandbox
 - `remote`: reachable from phones, other computers, and app.t3.codes over the network.
 
 `remote` is the line that matters. A server reachable from the network also accepts browsers on
-this machine, and the two local kinds differ only in how T3 Code was started. On machines with the
+this machine, and the two local kinds differ only in how E4 Code was started. On machines with the
 desktop app, keep `desktop` in the list, or the app cannot start.
 
 Without `remote`, the server listens only on a loopback address, creates no pairing links, and
@@ -212,17 +212,17 @@ to it, such as one `t3 pair --tailscale` set up, and leaves other routes alone. 
 while such a route stays on, or while Tailscale's answer cannot be read; the error names the
 command that turns the route off. A route whose target is a name, such as `localhost` or another
 machine on the same port, also stops it, since a name can resolve to this server; change the route
-or T3 Code's port. If Tailscale is installed but does not answer, as on a Mac where it was never set up, the
+or E4 Code's port. If Tailscale is installed but does not answer, as on a Mac where it was never set up, the
 server does not start until Tailscale is set up or removed. It does start when Tailscale is not
 installed, not running, or
 logged out, since nothing forwards then; a route Tailscale kept returns when Tailscale runs again,
-so restart T3 Code after that.
+so restart E4 Code after that.
 
 ### Other capabilities
 
 - `webhookTasks: false`: scheduled tasks cannot use webhook triggers. Existing webhook tasks stay
   but do not run, and cannot be turned back on. Users can still edit or delete them.
-- `browserCookieImport: false`: users cannot import cookies from another browser into T3 Code's
+- `browserCookieImport: false`: users cannot import cookies from another browser into E4 Code's
   browser.
 - `telemetry: false`: the server and desktop app send no [product usage data](./telemetry.md) or
   relay connection traces. A policy cannot turn them on. A browser that opens the server, such as
@@ -247,8 +247,8 @@ starts the binary you set.
 
 ### Updates
 
-- `mode`: `auto` keeps the normal update flow. `off` stops T3 Code from checking for updates, for
-  machines that get T3 Code through device management.
+- `mode`: `auto` keeps the normal update flow. `off` stops E4 Code from checking for updates, for
+  machines that get E4 Code through device management.
 - `feedUrl`: the desktop app updates from your own mirror of the release feed instead of GitHub.
   Publish only the versions you have approved. The `t3` command-line server updates through npm,
   so pin it with your package tooling.
@@ -256,19 +256,19 @@ starts the binary you set.
 
 ## What a policy does not cover
 
-The policy controls what T3 Code does. Agents run through each provider's own CLI, which reads its
-own configuration, such as `~/.claude`, and which a user can also run outside T3 Code. To restrict
+The policy controls what E4 Code does. Agents run through each provider's own CLI, which reads its
+own configuration, such as `~/.claude`, and which a user can also run outside E4 Code. To restrict
 those CLIs, use their own managed configuration, such as Claude Code's managed settings.
 
-On a managed Windows machine, the desktop app does not run a WSL environment. A T3 Code server a
-user starts inside WSL reads `/etc/t3code/policy.json` in that distro, not the Windows policy.
-Deploy the policy file there too if your users run T3 Code in WSL.
+On a managed Windows machine, the desktop app does not run a WSL environment. A E4 Code server a
+user starts inside WSL reads `/etc/e4code/policy.json` in that distro, not the Windows policy.
+Deploy the policy file there too if your users run E4 Code in WSL.
 
-Without `remote`, T3 Code does not expose the server, but a user can still forward its local port
+Without `remote`, E4 Code does not expose the server, but a user can still forward its local port
 with other tools.
 
-A user with administrator rights on the machine can edit or remove the policy. T3 Code enforces
+A user with administrator rights on the machine can edit or remove the policy. E4 Code enforces
 the policy in its own processes, which run as the user, so it stops users from changing managed
-settings in T3 Code but does not stop a user who modifies or replaces T3 Code itself. A version
+settings in E4 Code but does not stop a user who modifies or replaces E4 Code itself. A version
 from before managed policy ignores it too. To control which builds can run, use your device
 management tool's application controls.
