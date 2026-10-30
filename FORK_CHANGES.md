@@ -12,3 +12,12 @@ Lets E4 Code install next to T3 Code without sharing state.
 - Desktop updates, CLI archives, release links and the GitHub star prompt point at `stonith404/e4code`.
 - Tests updated to the new names.
 - `README.md` opens with a short fork section listing the user-facing patches, and `AGENTS.md` ends with the fork's rules for agents.
+
+## feat(branding): E4 wordmark in app icons and logos
+
+Keeps upstream's three icon designs (black production, night-sky nightly, blueprint dev) and swaps the T3 wordmark for a geometric E4.
+
+- `text.svg` in the dev, nightly and prod Icon Composer projects carries the E4 mark; the dev `annotations.svg` dimension lines follow the new glyphs.
+- iOS, universal, Windows, web favicon and Android assets regenerated with `icons:export` and `icons:export:android`. The macOS pre-Tahoe PNGs are composed from the universal export (824 body inset 100, soft shadow) because the export only works in the Icon Composer GUI.
+- Android monochrome and notification marks redrawn by hand at the same bounds as upstream's T3 silhouettes.
+- `T3Wordmark` in web and mobile, the mobile widget mark, `assets/prod/logo.svg`, the DMG backgrounds and the mobile showcase favicon use the E4 path. Component and file names stay as upstream's to keep syncs small.
