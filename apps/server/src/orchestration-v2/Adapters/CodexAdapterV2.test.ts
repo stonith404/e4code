@@ -63,6 +63,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import packageJson from "../../../package.json" with { type: "json" };
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as McpServers from "../../mcpServers/McpServers.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as EffectWorker from "../EffectWorker.ts";
@@ -1594,7 +1595,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
       ),
   );
 
-  it.effect("adds the session MCP server without replacing launch-argument servers", () =>
+  it.effect("adds the session and user MCP servers without replacing launch-argument servers", () =>
     Effect.gen(function* () {
       const scenario = "launch-mcp-servers";
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
@@ -1631,6 +1632,15 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             mcp_optional_startup_grace_ms: 10_000,
             "features.concurrent_reasoning_summaries": true,
             "shell_environment_policy.set.T3CODE_THREAD_ID": `thread-${scenario}`,
+            "mcp_servers.docs": {
+              command: "npx",
+              args: ["docs-mcp"],
+              env: { DOCS_TOKEN: "docs-token" },
+            },
+            "mcp_servers.linear": {
+              url: "http://127.0.0.1:43123/mcp-servers/linear",
+              http_headers: { Authorization: "Bearer secret-codex-token" },
+            },
             "mcp_servers.t3-code": {
               url: "http://127.0.0.1:43123/mcp",
               tool_timeout_sec: 3_900,
@@ -1655,6 +1665,24 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           McpProviderSessions.layer,
           NodeServices.layer,
           NodeCrypto.layer,
+          Layer.mock(McpServers.McpServers)({
+            forProviderInstance: (_instanceId, mcpSession) =>
+              Effect.succeed([
+                {
+                  name: "docs",
+                  transport: "stdio",
+                  command: "npx",
+                  args: ["docs-mcp"],
+                  env: { DOCS_TOKEN: "docs-token" },
+                },
+                {
+                  name: "linear",
+                  transport: "http",
+                  url: "http://127.0.0.1:43123/mcp-servers/linear",
+                  headers: { Authorization: mcpSession?.authorizationHeader ?? "" },
+                },
+              ]),
+          }),
         ),
       ),
     ),
