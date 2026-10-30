@@ -112,6 +112,17 @@ const read = (
   );
 
 describe("readManagedPolicy", () => {
+  it("uses E4-specific policy locations so E4 Code can be managed separately", () => {
+    assert.equal(managedPolicyPath("darwin"), "/Library/Application Support/E4Code/policy.json");
+    assert.equal(managedPolicyPath("win32"), "C:\\Program Files\\E4Code\\policy.json");
+    assert.equal(managedPolicyPath("linux"), "/etc/e4code/policy.json");
+    assert.equal(
+      MACOS_MANAGED_PREFERENCES_PATH,
+      "/Library/Managed Preferences/com.eliasschneider.e4code.plist",
+    );
+    assert.equal(WINDOWS_POLICY_KEY, "HKLM\\SOFTWARE\\Policies\\EliasSchneider\\E4Code");
+  });
+
   it.effect("reads a macOS configuration profile, and refuses one beside a policy file", () =>
     Effect.gen(function* () {
       const plutil = { "/usr/bin/plutil": { stdout: policy, exitCode: 0 } };
@@ -187,7 +198,7 @@ describe("readManagedPolicy", () => {
         }
         assert.include(
           yield* win32({}, new WindowsRegistryError({})),
-          "cannot load its registry reader; reinstall T3 Code",
+          "cannot load its registry reader; reinstall E4 Code",
         );
         assert.include(
           yield* win32({}, policyKey([{ name: "Policy", type: "other" }])),
@@ -294,14 +305,14 @@ describe("readManagedPolicy", () => {
       // Anything the template does not write fails closed rather than being ignored.
       for (const [registry, reason] of [
         [policyKey([organization, dword("Telemetry", 2)]), "DWORD of 0 or 1"],
-        [policyKey([organization, text("MaxMode", "auto")]), "not a T3 Code policy value"],
-        [policyKey([organization], { Other: { x: 1 } }), "Other is not a T3 Code policy key"],
+        [policyKey([organization, text("MaxMode", "auto")]), "not an E4 Code policy value"],
+        [policyKey([organization], { Other: { x: 1 } }), "Other is not an E4 Code policy key"],
         [
           {
             ...policyKey([organization, dword("Clients", 1)], { Clients: { desktop: 1 } }),
             Clients: { values: [dword("desktop", 1)], subkeys: ["Nested"] },
           },
-          "Clients\\Nested is not a T3 Code policy key",
+          "Clients\\Nested is not an E4 Code policy key",
         ],
         [policyKey([organization, text("Settings", "{")]), "not valid JSON"],
         [policyKey([organization, dword("Clients", 2)]), "DWORD of 0 or 1"],
@@ -318,7 +329,7 @@ describe("readManagedPolicy", () => {
         [policyKey([{ name: "Organization", type: "other" }]), "Organization must be a string"],
         [
           policyKey([text("MaxRuntimeMode", "auto-accept-edits")]),
-          "set the Organization policy whenever another T3 Code policy is set",
+          "set the Organization policy whenever another E4 Code policy is set",
         ],
       ] as const) {
         assert.include(yield* document(registry), reason);
