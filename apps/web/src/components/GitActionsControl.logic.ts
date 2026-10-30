@@ -13,6 +13,12 @@ import {
   type GitDialogAction,
 } from "@t3tools/client-runtime/state/vcs";
 
+import {
+  checkpointFileTotals,
+  type ThreadCheckpointSummary,
+} from "@t3tools/client-runtime/state/thread-checkpoints";
+import type { DiffPanelSelection } from "../diffPanelStore";
+
 export {
   requiresDefaultBranchConfirmation,
   type DefaultBranchConfirmableAction,
@@ -434,7 +440,7 @@ export type ChangesLineTotals = {
 // `branchChanges ?? workingTree` treats `{0,0}` as present, so a zero branch total hid a dirty
 // working tree and the Changes row read +0 while Diff still showed the work.
 export function resolveChangesTotals(
-  status: VcsStatusResult | null | undefined,
+  status: Pick<VcsStatusResult, "workingTree" | "branchChanges"> | null | undefined,
 ): ChangesLineTotals | null {
   if (!status) return null;
   const branch = status.branchChanges;
@@ -449,4 +455,41 @@ export function resolveChangesTotals(
     return { insertions: branch.insertions, deletions: branch.deletions };
   }
   return { insertions: tree.insertions, deletions: tree.deletions };
+}
+
+// Follows the diff panel's scope so the row counts what opening it shows; scopes the status snapshot cannot total fall back to branch Changes
+export function resolveChangesRowStat(
+  selection: DiffPanelSelection,
+  gitStatus: Pick<VcsStatusResult, "workingTree" | "branchChanges"> | null,
+  turns: ReadonlyArray<ThreadCheckpointSummary>,
+): { label: string; insertions: number; deletions: number } {
+  if (selection.kind === "unstaged") {
+    return {
+      label: "Uncommitted",
+      insertions: gitStatus?.workingTree.insertions ?? 0,
+      deletions: gitStatus?.workingTree.deletions ?? 0,
+    };
+  }
+  if (selection.kind === "turn") {
+    const ordered = turns.toSorted(
+      (left, right) =>
+        right.checkpointTurnCount - left.checkpointTurnCount ||
+        right.completedAt.localeCompare(left.completedAt),
+    );
+    const turn = ordered.find((summary) => summary.runId === selection.turnId) ?? ordered[0];
+    if (turn) {
+      const totals = checkpointFileTotals(turn);
+      return {
+        label: turn === ordered[0] ? "Latest turn" : `Turn ${turn.checkpointTurnCount}`,
+        insertions: totals.additions,
+        deletions: totals.deletions,
+      };
+    }
+  }
+  const totals = resolveChangesTotals(gitStatus);
+  return {
+    label: "Changes",
+    insertions: totals?.insertions ?? 0,
+    deletions: totals?.deletions ?? 0,
+  };
 }
