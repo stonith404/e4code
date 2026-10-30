@@ -114,6 +114,7 @@ import {
   type RunId,
   type ThreadId,
   resolveIdleCompaction,
+  T3_MCP_SERVER_NAME,
 } from "@t3tools/contracts";
 
 import { FILE_HEADERS_ONLY, formatPatch, structuredPatch } from "diff";
@@ -156,6 +157,7 @@ import {
 import * as ServerConfig from "../../config.ts";
 import * as PortScanner from "../../preview/PortScanner.ts";
 import * as ServerSettings from "../../serverSettings.ts";
+import * as McpServers from "../../mcpServers/McpServers.ts";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import { spawnAndCollect } from "@t3tools/provider-core/server/snapshotProbe";
 import { signalProcessGroup } from "@t3tools/provider-core/server/processGroup";
@@ -1545,7 +1547,8 @@ export function makeClaudeQueryOptions(input: {
           ...compactQuerySettings,
           env: { ...compactQuerySettings?.env, ENABLE_TOOL_SEARCH: input.toolSearchOverride },
         } as ClaudeSdkSettings);
-  const deviceInstructions = input.mcpServers !== undefined && input.deviceToolsAvailable === true;
+  const hasT3Mcp = input.mcpServers?.[T3_MCP_SERVER_NAME] !== undefined;
+  const deviceInstructions = hasT3Mcp && input.deviceToolsAvailable === true;
   const options: ClaudeAgentSdkQueryOptions = {
     model: compiledSelection.apiModelId,
     tools: claudeAgentSdkQueryToolsForSdk(selectedTools),
@@ -1597,7 +1600,7 @@ export function makeClaudeQueryOptions(input: {
       preset: "claude_code" as const,
       append: [
         buildRuntimeInstructions({ harness: "Claude Code" }) +
-          (input.mcpServers === undefined
+          (!hasT3Mcp
             ? ""
             : T3_CODE_ORCHESTRATION_INSTRUCTIONS +
               CLAUDE_BACKGROUND_WAIT_INSTRUCTIONS +
@@ -1723,15 +1726,33 @@ export const CLAUDE_T3_MCP_TOOL_TIMEOUT_MS = 65 * 60 * 1_000;
 
 export function claudeMcpQueryOverrides(input: {
   readonly mcpSession: McpProviderSession.McpProviderSessionConfig | undefined;
+  readonly mcpServers: ReadonlyArray<McpServers.ProviderMcpServer>;
   readonly readOnlySandbox: boolean;
   readonly allowedTools?: ReadonlyArray<string>;
 }): {
   readonly allowedTools?: ReadonlyArray<string>;
   readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
 } {
+  // User servers are not pre-approved: their tools go through the session's permission mode.
+  const userServers = Object.fromEntries(
+    input.mcpServers.map((server) => [
+      server.name,
+      server.transport === "stdio"
+        ? {
+            type: "stdio" as const,
+            command: server.command,
+            args: [...server.args],
+            env: server.env,
+          }
+        : { type: "http" as const, url: server.url, headers: server.headers },
+    ]),
+  );
   const session = input.mcpSession;
   if (session === undefined) {
-    return input.allowedTools === undefined ? {} : { allowedTools: input.allowedTools };
+    return {
+      ...(input.allowedTools === undefined ? {} : { allowedTools: input.allowedTools }),
+      ...(input.mcpServers.length === 0 ? {} : { mcpServers: userServers }),
+    };
   }
   const mcpAllowedTools = input.readOnlySandbox
     ? CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS
@@ -1739,7 +1760,8 @@ export function claudeMcpQueryOverrides(input: {
   return {
     allowedTools: Array.from(new Set([...(input.allowedTools ?? []), ...mcpAllowedTools])),
     mcpServers: {
-      "t3-code": {
+      ...userServers,
+      [T3_MCP_SERVER_NAME]: {
         type: "http",
         url: session.endpoint,
         headers: {
@@ -4552,6 +4574,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const serverSettings = yield* Effect.serviceOption(ServerSettings.ServerSettingsService);
+  const mcpServerConfigs = yield* Effect.serviceOption(McpServers.McpServers);
   const { attachmentsDir, fileSystem, path, crypto, idAllocator, queryRunner } = adapterOptions;
   const subagentModelCatalog = scopeClaudeModelCatalog(
     BUNDLED_CLAUDE_MODEL_CATALOG,
@@ -10226,6 +10249,12 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           const mcpSession = yield* mcpSessions.read(turnInput.threadId);
           const mcpOverrides = claudeMcpQueryOverrides({
             mcpSession,
+            mcpServers: Option.isSome(mcpServerConfigs)
+              ? yield* mcpServerConfigs.value.forProviderInstance(
+                  adapterOptions.instanceId,
+                  mcpSession,
+                )
+              : [],
             readOnlySandbox:
               sandboxPolicyKindForClaudeRuntimePolicy(turnInput.runtimePolicy) === "readOnly",
             ...(queryPolicy.allowedTools === undefined

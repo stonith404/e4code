@@ -528,6 +528,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
     const mcpSession = mcpSessionFor(threadId);
     const overrides = ClaudeAdapterV2.claudeMcpQueryOverrides({
       mcpSession,
+      mcpServers: [],
       readOnlySandbox: true,
       allowedTools: [...ClaudeAdapterV2.CLAUDE_READ_ONLY_ALLOWED_TOOLS],
     });
@@ -554,13 +555,18 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
     );
     const initialKey = ClaudeAdapterV2.claudeEffectiveQueryPolicyKey(
       queryPolicy,
-      ClaudeAdapterV2.claudeMcpQueryOverrides({ mcpSession, readOnlySandbox: false }),
+      ClaudeAdapterV2.claudeMcpQueryOverrides({
+        mcpSession,
+        mcpServers: [],
+        readOnlySandbox: false,
+      }),
     );
 
     const rotatedKey = ClaudeAdapterV2.claudeEffectiveQueryPolicyKey(
       queryPolicy,
       ClaudeAdapterV2.claudeMcpQueryOverrides({
         mcpSession: mcpSessionFor(threadId, "Bearer rotated-claude-token"),
+        mcpServers: [],
         readOnlySandbox: false,
       }),
     );
@@ -601,14 +607,41 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
       browserToolsAvailable: true,
     };
 
+    const userServers = [
+      {
+        name: "docs",
+        transport: "stdio",
+        command: "npx",
+        args: ["docs-mcp"],
+        env: { DOCS_TOKEN: "secret-docs-token" },
+      },
+      {
+        name: "linear",
+        transport: "http",
+        url: "http://127.0.0.1:43123/mcp-servers/linear",
+        headers: { Authorization: "Bearer secret-claude-token" },
+      },
+    ] as const;
     const overrides = ClaudeAdapterV2.claudeMcpQueryOverrides({
       mcpSession,
+      mcpServers: userServers,
       readOnlySandbox: false,
       allowedTools: ["Read"],
     });
     assert.deepEqual(overrides, {
       allowedTools: ["Read", "mcp__t3-code__*"],
       mcpServers: {
+        docs: {
+          type: "stdio",
+          command: "npx",
+          args: ["docs-mcp"],
+          env: { DOCS_TOKEN: "secret-docs-token" },
+        },
+        linear: {
+          type: "http",
+          url: "http://127.0.0.1:43123/mcp-servers/linear",
+          headers: { Authorization: "Bearer secret-claude-token" },
+        },
         "t3-code": {
           type: "http",
           url: "http://127.0.0.1:43123/mcp",
@@ -646,6 +679,27 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
     const logged = ClaudeAdapterV2.loggedClaudeQueryOptions(options);
     assert.equal(logged.hasMcpServers, true);
     assert.notInclude(JSON.stringify(logged), "secret-claude-token");
+    assert.notInclude(JSON.stringify(logged), "secret-docs-token");
+
+    const withoutT3 = ClaudeAdapterV2.claudeMcpQueryOverrides({
+      mcpSession: undefined,
+      mcpServers: userServers.slice(0, 1),
+      readOnlySandbox: false,
+    });
+    assert.deepEqual(Object.keys(withoutT3.mcpServers ?? {}), ["docs"]);
+    const withoutT3Options = ClaudeAdapterV2.makeClaudeQueryOptions({
+      modelSelection: CLAUDE_TEST_MODEL_SELECTION,
+      nativeThreadId: "native-thread-claude-user-mcp",
+      resume: false,
+      cwd: "/workspace",
+      mcpServers: withoutT3.mcpServers ?? {},
+      environment: {},
+    });
+    assert.notInclude(
+      (withoutT3Options.systemPrompt as { readonly append?: string }).append ?? "",
+      "Use `delegate_task`",
+      "user servers alone must not announce T3 orchestration tools",
+    );
   });
 
   it("logs --settings key names without their values", () => {

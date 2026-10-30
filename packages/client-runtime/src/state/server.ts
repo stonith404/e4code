@@ -1578,6 +1578,10 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:check-otlp-endpoint",
       tag: WS_METHODS.serverCheckOtlpEndpoint,
     }),
+    startMcpServerOAuth: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:mcp-server-oauth-start",
+      tag: WS_METHODS.mcpServerOAuthStart,
+    }),
     retryResourceTelemetry: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:server:retry-resource-telemetry",
       tag: WS_METHODS.serverRetryResourceTelemetry,
