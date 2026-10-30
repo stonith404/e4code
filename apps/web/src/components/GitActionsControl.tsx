@@ -37,6 +37,7 @@ import {
   CloudDownloadIcon,
   CloudUploadIcon,
   FileDiffIcon,
+  FileSearchIcon,
   GitBranchPlusIcon,
   GitCommitIcon,
   InfoIcon,
@@ -60,6 +61,7 @@ import {
   type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
   resolveChangesTotals,
+  resolveChangesRowStat,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveGitActionProgressPresentation,
@@ -98,7 +100,11 @@ import {
   useVcsInitAction,
   useVcsPullAction,
 } from "../state/sourceControlActions";
-import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities";
+import {
+  useThreadCheckpointSummaries,
+  useQuietThreadProjection,
+  useQuietThreadShell,
+} from "~/state/entities";
 import { useProjectClone } from "~/state/projectClones";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
@@ -107,6 +113,7 @@ import { reviewEnvironment } from "~/state/review";
 import { revisionedQuery } from "~/state/revisionedQuery";
 import {
   selectThreadBranchBaseRef,
+  selectThreadDiffPanelSelection,
   useDiffPanelSessionStore,
   useDiffPanelStore,
 } from "~/diffPanelStore";
@@ -158,6 +165,7 @@ interface GitActionsViewProps {
   showChanges?: boolean;
   onOpenChanges?: () => void;
   workspaceMutationId?: string | null;
+  onOpenReview?: () => void;
 }
 
 interface GitActionsControlProps extends GitActionsViewProps {
@@ -1017,6 +1025,7 @@ function CheckoutGitActionsControl({
   showChanges = true,
   onOpenChanges,
   workspaceMutationId = null,
+  onOpenReview,
 }: GitActionsControlProps) {
   const gt = useGT();
   const messages = useMessages();
@@ -1111,13 +1120,28 @@ function CheckoutGitActionsControl({
     gitStatusForActions,
     changesPreview.data?.sources.find((source) => source.kind === "branch-range"),
   );
-  const changesTotals = resolvedChangesTotals ?? { insertions: 0, deletions: 0 };
-  const changesBreakdown = resolvedChangesTotals?.breakdown ?? null;
-  const changesBaseLabel = resolvedChangesTotals
-    ? resolvedChangesTotals.baseRef === null
-      ? gt("Uncommitted")
-      : gt("vs {ref}", { ref: resolvedChangesTotals.baseRef })
-    : null;
+  const diffSelection = useDiffPanelStore((state) =>
+    selectThreadDiffPanelSelection(state.byThreadKey, activeThreadRef),
+  );
+  const turnSummaries = useThreadCheckpointSummaries(
+    diffSelection.kind === "turn" ? activeThreadRef : null,
+  );
+  const changesRowStat = resolveChangesRowStat(
+    diffSelection,
+    gitStatusForActions ?? null,
+    turnSummaries,
+    changesPreview.data?.sources.find((source) => source.kind === "branch-range"),
+    messages,
+  );
+  const changesTotals = changesRowStat;
+  const changesBreakdown =
+    changesRowStat.kind === "branch" ? (resolvedChangesTotals?.breakdown ?? null) : null;
+  const changesBaseLabel =
+    changesRowStat.kind === "branch" && resolvedChangesTotals
+      ? resolvedChangesTotals.baseRef === null
+        ? gt("Uncommitted")
+        : gt("vs {ref}", { ref: resolvedChangesTotals.baseRef })
+      : null;
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1734,9 +1758,7 @@ function CheckoutGitActionsControl({
           >
             <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
             <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-              <span className="shrink-0">
-                <T>Changes</T>
-              </span>
+              <span className="shrink-0">{changesRowStat.label}</span>
               {changesBaseLabel ? (
                 <Tooltip>
                   <TooltipTrigger
@@ -1783,6 +1805,20 @@ function CheckoutGitActionsControl({
             </TooltipPopup>
           ) : null}
         </Tooltip>
+      ) : null}
+      {onOpenReview && isRepo && !quietEmptyDraft ? (
+        <ThreadDetailsControl
+          type="button"
+          variant="ghost"
+          size="sm"
+          part="row"
+          onClick={onOpenReview}
+        >
+          <FileSearchIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
+          <span className={cn("flex-1 text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>
+            <T>Review</T>
+          </span>
+        </ThreadDetailsControl>
       ) : null}
 
       <Dialog

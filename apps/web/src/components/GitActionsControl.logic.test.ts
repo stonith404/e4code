@@ -1,4 +1,10 @@
-import { SourceControlProviderKind, type VcsStatusResult } from "@t3tools/contracts";
+import {
+  CheckpointRef,
+  RunId,
+  SourceControlProviderKind,
+  type VcsStatusResult,
+} from "@t3tools/contracts";
+import type { ThreadCheckpointSummary } from "@t3tools/client-runtime/state/thread-checkpoints";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import { resolveAutoFeatureBranchName } from "@t3tools/shared/git";
 import { assert, describe, it } from "vite-plus/test";
@@ -8,6 +14,7 @@ import {
   hasUsableGitMenuContent,
   requiresDefaultBranchConfirmation,
   resolveChangesTotals,
+  resolveChangesRowStat,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveLiveThreadBranchUpdate,
@@ -417,4 +424,155 @@ describe("resolveChangesTotals", () => {
       { insertions: 2, deletions: 0 },
     );
   });
+});
+
+describe("resolveChangesRowStat", () => {
+  const gitStatus = status({
+    workingTree: { files: [], insertions: 3, deletions: 1 },
+    branchChanges: { baseRef: "main", insertions: 40, deletions: 9 },
+  });
+  const turn = (count: number, additions: number): ThreadCheckpointSummary => ({
+    runId: RunId.make(`run-${count}`),
+    checkpointTurnCount: count,
+    checkpointRef: CheckpointRef.make(`refs/t3/checkpoints/${count}`),
+    status: "ready",
+    files: [{ path: "a.ts", kind: "modified", additions, deletions: 2 }],
+    assistantMessageId: null,
+    completedAt: `2026-10-30T10:0${count}:00.000Z`,
+  });
+  const turns = [turn(1, 5), turn(2, 7)];
+  const selectTurn = (runId: string) =>
+    ({ kind: "turn", turnId: RunId.make(runId), filePath: null, revealRequestId: 1 }) as const;
+
+  it("keeps upstream dirty-tree fallback for branch and unsupported scopes", () => {
+    const dirty = status({
+      branchChanges: { baseRef: "main", insertions: 0, deletions: 0 },
+      workingTree: { files: [], insertions: 5, deletions: 1 },
+    });
+    for (const selection of [
+      { kind: "branch", baseRef: null },
+      { kind: "commit", sha: "abc1234", baseRef: null },
+    ] as const) {
+      assert.deepEqual(resolveChangesRowStat(selection, dirty, []), {
+        kind: "branch",
+        label: "Changes",
+        insertions: 5,
+        deletions: 1,
+      });
+    }
+  });
+
+  it("uses complete root totals when the checkpoint files are only a prefix", () => {
+    const partial = { ...turn(2, 7), filesTotal: { count: 10, additions: 80, deletions: 12 } };
+    assert.deepEqual(resolveChangesRowStat(selectTurn("run-2"), gitStatus, [partial]), {
+      kind: "turn",
+      label: "Latest turn",
+      insertions: 80,
+      deletions: 12,
+    });
+  });
+
+  it("counts the selected turn and labels it by recency", () => {
+    assert.deepEqual(resolveChangesRowStat(selectTurn("run-2"), gitStatus, turns), {
+      kind: "turn",
+      label: "Latest turn",
+      insertions: 7,
+      deletions: 2,
+    });
+    assert.deepEqual(resolveChangesRowStat(selectTurn("run-1"), gitStatus, turns), {
+      kind: "turn",
+      label: "Turn 1",
+      insertions: 5,
+      deletions: 2,
+    });
+    assert.equal(resolveChangesRowStat(selectTurn("gone"), gitStatus, turns).label, "Latest turn");
+  });
+
+  it("falls back to branch Changes for scopes the status cannot total", () => {
+    assert.deepEqual(
+      resolveChangesRowStat({ kind: "commit", sha: "abc1234", baseRef: null }, gitStatus, turns),
+      {
+        kind: "branch",
+        label: "Changes",
+        insertions: 40,
+        deletions: 9,
+      },
+    );
+    assert.deepEqual(resolveChangesRowStat(selectTurn("run-1"), gitStatus, []), {
+      kind: "branch",
+      label: "Changes",
+      insertions: 40,
+      deletions: 9,
+    });
+  });
+});
+
+it("uses the branch preview only for the Changes-row fallback, not Uncommitted or turns", () => {
+  const gitStatus = status({
+    workingTree: { files: [], insertions: 3, deletions: 1 },
+    branchChanges: { baseRef: "main", insertions: 40, deletions: 9 },
+  });
+  const source = {
+    id: "branch-range",
+    kind: "branch-range",
+    title: "Changes vs release",
+    baseRef: "release",
+    headRef: "feature/test",
+    diff: "",
+    diffHash: "hash",
+    truncated: false,
+    files: [{ path: "a.ts", previousPath: null, additions: 6, deletions: 2 }],
+  } as const;
+  const turns: ThreadCheckpointSummary[] = [
+    {
+      runId: RunId.make("run-1"),
+      checkpointTurnCount: 1,
+      checkpointRef: CheckpointRef.make("refs/t3/checkpoints/1"),
+      status: "ready",
+      files: [{ path: "a.ts", kind: "modified", additions: 7, deletions: 4 }],
+      assistantMessageId: null,
+      completedAt: "2026-11-12T00:00:00.000Z",
+    },
+  ];
+  assert.deepEqual(resolveChangesRowStat({ kind: "unstaged" }, gitStatus, turns, source), {
+    kind: "unstaged",
+    label: "Uncommitted",
+    insertions: 3,
+    deletions: 1,
+  });
+  assert.deepEqual(
+    resolveChangesRowStat(
+      { kind: "turn", turnId: RunId.make("run-1"), filePath: null, revealRequestId: 1 },
+      gitStatus,
+      turns,
+      source,
+    ),
+    { kind: "turn", label: "Latest turn", insertions: 7, deletions: 4 },
+  );
+  for (const selection of [
+    { kind: "branch", baseRef: null },
+    { kind: "commit", sha: "abc1234", baseRef: null },
+  ] as const) {
+    assert.deepEqual(resolveChangesRowStat(selection, gitStatus, turns, source), {
+      kind: "branch",
+      label: "Changes",
+      insertions: 6,
+      deletions: 2,
+    });
+    assert.deepEqual(resolveChangesRowStat(selection, gitStatus, turns, { ...source, files: [] }), {
+      kind: "branch",
+      label: "Changes",
+      insertions: 0,
+      deletions: 0,
+    });
+  }
+});
+
+it("keeps the Changes-row scope identity when its label is translated", () => {
+  const translate = (() => "Änderungen") as NonNullable<
+    Parameters<typeof resolveChangesRowStat>[4]
+  >;
+  const row = resolveChangesRowStat({ kind: "branch", baseRef: null }, null, [], null, translate);
+  assert.equal(row.kind, "branch");
+  assert.equal(row.label, "Änderungen");
 });

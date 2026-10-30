@@ -3,6 +3,7 @@ import { useGT } from "gt-react";
 import * as Schema from "effect/Schema";
 import {
   useEffect,
+  useEffectEvent,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -29,11 +30,16 @@ import { isEditableFocused } from "../lib/editableFocus";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { isModelPickerOpen } from "../modelPickerVisibility";
-import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
+import {
+  selectActiveRightPanel,
+  selectThreadRightPanelState,
+  useRightPanelStore,
+} from "../rightPanelStore";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
+import { useThreadRouteRef } from "../hooks/useThreadRouteTarget";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
@@ -417,6 +423,28 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
   );
 }
 
+// A maximized Review takes the whole window, so the sidebar collapses until it is restored
+function CollapseSidebarForMaximizedReview() {
+  const threadRef = useThreadRouteRef();
+  const reviewMaximized = useRightPanelStore(
+    (store) =>
+      selectThreadRightPanelState(store.byThreadKey, threadRef).maximized === true &&
+      selectActiveRightPanel(store.byThreadKey, threadRef) === "review",
+  );
+  const { isMobile, open, setOpen } = useSidebar();
+  const collapse = useEffectEvent(() => {
+    if (isMobile || !open) return false;
+    setOpen(false);
+    return true;
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- drives the sidebar's external open store from the panel store
+  useEffect(() => {
+    if (!reviewMaximized || !collapse()) return;
+    return () => setOpen(true);
+  }, [reviewMaximized, setOpen]);
+  return null;
+}
+
 export function AppSidebarLayout({
   children,
   showSidebar = true,
@@ -502,6 +530,7 @@ export function AppSidebarLayout({
         {children}
         <BackgroundThreadAnnouncer />
         <SidebarControl showSidebar={showSidebar} />
+        {showSidebar ? <CollapseSidebarForMaximizedReview /> : null}
         {isElectron ? <HistorySwipeNavigation /> : null}
       </SidebarProvider>
     </PanelAnimationSuppressionProvider>
