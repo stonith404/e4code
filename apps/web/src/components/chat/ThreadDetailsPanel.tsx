@@ -87,6 +87,7 @@ interface ThreadDetailsPanelProps extends Pick<
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest: () => void;
   onOpenChanges?: () => void;
+  onOpenReview?: () => void;
   onRunProjectScript: (script: ProjectScript) => void;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
   onUpdateProjectScript: (
@@ -196,7 +197,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
             offersGit &&
             props.activeProjectName !== undefined &&
             (folderIsRepo || (!tracksFolders && taskFolder === null)) &&
-            (visible.gitActions || (visible.changes && folderIsRepo)),
+            (visible.gitActions || ((visible.changes || visible.review) && folderIsRepo)),
           // Also for a project that tracks nothing: a thread can change a submodule.
           repositories: offersGit && density !== "essential" && visible.gitActions,
         };
@@ -284,6 +285,9 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         activeThreadRef={activeThreadRef}
                         {...(props.draftId ? { draftId: props.draftId } : {})}
                         {...(props.onOpenChanges ? { onOpenChanges: props.onOpenChanges } : {})}
+                        {...(props.onOpenReview && visible.review
+                          ? { onOpenReview: props.onOpenReview }
+                          : {})}
                       />
                     ) : null}
                     {show.repositories ? (
