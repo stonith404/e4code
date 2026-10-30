@@ -26,7 +26,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))((it) =>
       );
       const loaded = (organization: string) =>
         ManagedPolicy.loadedPolicy({
-          path: "/etc/t3code/policy.json",
+          path: "/etc/e4code/policy.json",
           document: { schemaVersion: 1, organization },
         });
       const installed = yield* loaded("Example Corp");
@@ -42,14 +42,14 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))((it) =>
           return yield* describeRunningServer(statePath, current);
         });
 
-      assert.include(yield* describeRunningServer(statePath, installed), "No T3 Code server");
+      assert.include(yield* describeRunningServer(statePath, installed), "No E4 Code server");
       assert.include(yield* running(installed), "loaded this policy.");
       assert.include(
         yield* running(yield* loaded("Other Corp")),
-        "loaded Other Corp's policy from /etc/t3code/policy.json",
+        "loaded Other Corp's policy from /etc/e4code/policy.json",
       );
-      assert.include(yield* running(null), "loaded no policy. Restart T3 Code");
-      assert.include(yield* running(installed, null), "Restart T3 Code to apply");
+      assert.include(yield* running(null), "loaded no policy. Restart E4 Code");
+      assert.include(yield* running(installed, null), "Restart E4 Code to apply");
       assert.include(yield* running(null, null), "runs without a policy, as installed");
       assert.include(yield* running(undefined), "does not report which policy it loaded");
     }),
