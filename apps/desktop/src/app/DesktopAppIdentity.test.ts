@@ -153,7 +153,7 @@ describe("DesktopAppIdentity", () => {
         const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
         const userDataPath = yield* identity.resolveUserDataPath;
 
-        assert.equal(userDataPath, "/Users/alice/Library/Application Support/t3code-v2");
+        assert.equal(userDataPath, "/Users/alice/Library/Application Support/e4code");
       }),
       { legacyPathExists: true },
     ),
@@ -176,16 +176,21 @@ describe("DesktopAppIdentity", () => {
   );
 
   it.effect.each([
-    { stage: "Beta", environment: {} },
+    { stage: "Beta", runtimeName: "E4 Code", applicationName: "E4 Code", environment: {} },
     {
       stage: "Nightly",
+      runtimeName: "E4 Code Nightly",
+      applicationName: "E4 Code (Nightly)",
       environment: { appVersion: "0.0.43-nightly.20260929.2428" },
     },
     {
       stage: "Dev",
+      runtimeName: "E4 Code Dev",
+      applicationName: "E4 Code (Dev)",
       environment: { env: { VITE_DEV_SERVER_URL: "http://localhost:5173" } },
     },
-  ])("uses a valid native User-Agent product name for $stage", ({ stage, environment }) => {
+  ])("uses a valid native User-Agent product name for $stage", (input) => {
+    const { environment } = input;
     const calls: ElectronAppCalls = {
       setAboutPanelOptions: [],
       setDockIcon: [],
@@ -199,9 +204,9 @@ describe("DesktopAppIdentity", () => {
 
         const runtimeName = calls.setName[0];
         assert.isDefined(runtimeName);
-        assert.equal(runtimeName, `T3 Code ${stage}`);
+        assert.equal(runtimeName, input.runtimeName);
         assert.match(runtimeName.replaceAll(" ", ""), /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/);
-        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, `T3 Code (${stage})`);
+        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, input.applicationName);
       }),
       { calls, environment },
     );
