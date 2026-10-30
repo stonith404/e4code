@@ -11,3 +11,7 @@ Lets E4 Code install next to T3 Code without sharing state.
 - Linux executable, WM class, desktop entry and `.deb` package renamed to `e4code`.
 - Desktop updates, CLI archives and release links point at `stonith404/E4-code`.
 - Tests updated to the new names.
+
+## ci: add E4 release workflow
+
+`e4-release.yml` replaces upstream's `release.yml`, which only runs in pingdotgg/t3code. It reuses `release-desktop.yml` on GitHub-hosted runners, unsigned, without T3 Connect, npm, AUR, web, mobile or Discord publishing. Nightlies run hourly when main has changed (at least 6 hours apart). Stable releases come from a `vX.Y.Z` tag or a manual dispatch. Upstream's other workflows are disabled in the repository settings.
