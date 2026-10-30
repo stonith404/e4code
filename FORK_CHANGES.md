@@ -25,6 +25,15 @@ Keeps upstream's three icon designs (black production, night-sky nightly, bluepr
 
 ## ci: add E4 release workflow
 
-`e4-release.yml` replaces upstream's `release.yml`, which only runs in pingdotgg/t3code. It reuses `release-desktop.yml` on GitHub-hosted runners, unsigned, without T3 Connect, npm, AUR, web, mobile or Discord publishing. Nightlies run hourly when main has changed (at least 6 hours apart). Stable releases come from a `vX.Y.Z` tag or a manual dispatch. Upstream's other workflows are disabled in the repository settings.
+`e4-release.yml` replaces upstream's `release.yml`, which only runs in pingdotgg/t3code. It reuses `release-desktop.yml` on GitHub-hosted runners without T3 Connect, npm, AUR, web, mobile or Discord publishing. Nightlies run hourly when main has changed (at least 6 hours apart). Stable releases come from a `vX.Y.Z` tag or a manual dispatch. Upstream's other workflows are disabled in the repository settings.
 
 Upstream syncs rebase these patches onto upstream's main, so `check-nightly-release.cjs` also releases a main that diverged from the last nightly, instead of skipping it.
+
+## ci(desktop): sign macOS builds with a self-signed identity
+
+Lets the in-app updater install new builds on Macs that trust the fork's certificate. Squirrel.Mac only swaps in an update whose signature matches the running app, which ad hoc builds never do.
+
+- `.github/actions/import-mac-signing-identity` imports `CSC_LINK` into a keychain, trusts it as a root when it is self-signed (otherwise macOS lists no valid identity) and returns the identity name. The CLI archive and desktop jobs both use it.
+- When `CSC_LINK` is set but the Apple notarization secrets are not, the desktop job passes the identity as `T3CODE_DESKTOP_MAC_SIGN_IDENTITY`. `build-desktop-artifact.ts` then sets `mac.identity` with hardened runtime and notarization off, instead of upstream's `--signed` path that needs a provisioning profile.
+- Gatekeeper still shows the unverified-developer dialog on first launch, since only notarized Developer ID builds skip it.
+- Each Mac that should receive in-app updates trusts the certificate once: `security add-trusted-cert -r trustRoot -p codeSign -k ~/Library/Keychains/login.keychain-db e4code-signing.cert.pem`. The first switch from an ad hoc build to a signed one is a manual DMG install.
