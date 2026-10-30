@@ -72,6 +72,7 @@ interface ThreadDetailsPanelProps extends Pick<
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest: () => void;
   onOpenChanges?: () => void;
+  onOpenReview?: () => void;
   onRunProjectScript: (script: ProjectScript) => void;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
   onUpdateProjectScript: (
@@ -153,7 +154,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
           git:
             props.gitCwd !== null &&
             props.activeProjectName !== undefined &&
-            (visible.gitActions || (visible.changes && props.isGitRepo)),
+            (visible.gitActions || ((visible.changes || visible.review) && props.isGitRepo)),
         };
         return (
           <>
@@ -228,6 +229,9 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         activeThreadRef={activeThreadRef}
                         {...(props.draftId ? { draftId: props.draftId } : {})}
                         {...(props.onOpenChanges ? { onOpenChanges: props.onOpenChanges } : {})}
+                        {...(props.onOpenReview && visible.review
+                          ? { onOpenReview: props.onOpenReview }
+                          : {})}
                       />
                     ) : null}
                   </div>
