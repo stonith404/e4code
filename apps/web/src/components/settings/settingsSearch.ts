@@ -31,6 +31,7 @@ export type SettingsPath =
   | "/settings/threads"
   | "/settings/browser"
   | "/settings/devices"
+  | "/settings/mcp-servers"
   | "/settings/scheduled-tasks"
   | "/settings/source-control"
   | "/settings/worktrees"
@@ -120,6 +121,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/about": msg("About"),
   "/settings/voice": msg("Voice"),
   "/settings/archived": msg("Archive"),
+  "/settings/mcp-servers": msg("MCP servers"),
 };
 
 /** Sidebar labels; an entry of its own lets a translator shorten one below its page title. */
@@ -159,6 +161,7 @@ const ALL_SETTINGS_NAV_GROUPS: ReadonlyArray<SettingsNavGroup> = [
       "/settings/threads",
       "/settings/browser",
       "/settings/devices",
+      "/settings/mcp-servers",
       "/settings/scheduled-tasks",
     ],
   },
@@ -1505,6 +1508,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "mcp-servers",
+    title: msg("MCP servers"),
+    to: "/settings/mcp-servers",
+    searchTerms: [msg("model context protocol tools claude codex oauth stdio http add server")],
+  },
+  {
     id: "secret-providers",
     title: msg("Secret providers"),
     to: "/settings/secrets",
@@ -1545,6 +1554,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/threads": null,
   "/settings/browser": null,
   "/settings/devices": null,
+  "/settings/mcp-servers": null,
   "/settings/source-control": "environment-defaults",
   "/settings/worktrees": "project-defaults",
   "/settings/connections": "connections",

@@ -68,6 +68,7 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import packageJson from "../../../package.json" with { type: "json" };
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as McpServers from "../../mcpServers/McpServers.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as EffectWorker from "../EffectWorker.ts";
@@ -2956,7 +2957,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
       ),
   );
 
-  it.effect("adds the session MCP server and gives stdio servers the thread id", () =>
+  it.effect("adds session and user MCP servers and gives stdio servers the thread id", () =>
     Effect.gen(function* () {
       const scenario = "launch-mcp-servers";
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
@@ -3020,6 +3021,15 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             "features.concurrent_reasoning_summaries": true,
             "shell_environment_policy.set.T3CODE_THREAD_ID": `thread-${scenario}`,
             "mcp_servers.envprobe.env.T3CODE_THREAD_ID": `thread-${scenario}`,
+            "mcp_servers.docs": {
+              command: "npx",
+              args: ["docs-mcp"],
+              env: { DOCS_TOKEN: "docs-token", T3CODE_THREAD_ID: `thread-${scenario}` },
+            },
+            "mcp_servers.linear": {
+              url: "http://127.0.0.1:43123/mcp-servers/linear",
+              http_headers: { Authorization: "Bearer secret-codex-token" },
+            },
             "mcp_servers.t3-code": {
               url: "http://127.0.0.1:43123/mcp",
               tool_timeout_sec: 3_900,
@@ -3044,6 +3054,24 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           McpProviderSessions.layer,
           NodeServices.layer,
           NodeCrypto.layer,
+          Layer.mock(McpServers.McpServers)({
+            forProviderInstance: (_instanceId, _threadId, mcpSession) =>
+              Effect.succeed([
+                {
+                  name: "docs",
+                  transport: "stdio",
+                  command: "npx",
+                  args: ["docs-mcp"],
+                  env: { DOCS_TOKEN: "docs-token" },
+                },
+                {
+                  name: "linear",
+                  transport: "http",
+                  url: "http://127.0.0.1:43123/mcp-servers/linear",
+                  headers: { Authorization: mcpSession?.authorizationHeader ?? "" },
+                },
+              ]),
+          }),
         ),
       ),
     ),
@@ -10216,133 +10244,178 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     ],
   });
 
-  it.effect("resumes an unloaded native thread and retries an MCP resource read", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const scenario = "mcp-resource-thread-recovery";
-        const nativeThreadId = `native-${scenario}`;
-        const preamble = codexReplayPreamble({
-          nativeThreadId,
-          nativeTurnId: "unused-turn",
-          prompt: "unused-prompt",
-        }).slice(0, 5);
+  it.effect.each([false, true])(
+    "resumes an unloaded native thread and retries an MCP resource read (configured servers: %s)",
+    (configured) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const scenario = "mcp-resource-thread-recovery";
+          const nativeThreadId = `native-${scenario}`;
+          const preamble = codexReplayPreamble({
+            nativeThreadId,
+            nativeTurnId: "unused-turn",
+            prompt: "unused-prompt",
+          }).slice(0, 5);
 
-        const resourceResult = {
-          contents: [
-            {
-              uri: MCP_APP_RESOURCE,
-              mimeType: "text/html;profile=mcp-app",
-              text: MCP_APP_HTML,
-              _meta: { ui: { csp: { connectDomains: ["https://api.weather.test"] } } },
-            },
-          ],
-        };
+          const resourceResult = {
+            contents: [
+              {
+                uri: MCP_APP_RESOURCE,
+                mimeType: "text/html;profile=mcp-app",
+                text: MCP_APP_HTML,
+                _meta: { ui: { csp: { connectDomains: ["https://api.weather.test"] } } },
+              },
+            ],
+          };
 
-        const transcript = makeCodexReplayTranscript({
-          scenario,
-          entries: [
-            ...preamble,
-            {
-              type: "expect_outbound",
-              label: "initial MCP resource read",
-              frame: {
-                id: 3,
-                method: "mcpServer/resource/read",
-                params: {
-                  threadId: nativeThreadId,
-                  server: "weather",
-                  uri: MCP_APP_RESOURCE,
+          const transcript = makeCodexReplayTranscript({
+            scenario,
+            entries: [
+              ...preamble,
+              {
+                type: "expect_outbound",
+                label: "initial MCP resource read",
+                frame: {
+                  id: 3,
+                  method: "mcpServer/resource/read",
+                  params: {
+                    threadId: nativeThreadId,
+                    server: "weather",
+                    uri: MCP_APP_RESOURCE,
+                  },
                 },
               },
-            },
-            {
-              type: "emit_inbound",
-              label: "native thread is unloaded",
-              frame: {
-                id: 3,
-                error: {
-                  code: -32600,
-                  message: `thread not found: ${nativeThreadId}`,
+              {
+                type: "emit_inbound",
+                label: "native thread is unloaded",
+                frame: {
+                  id: 3,
+                  error: {
+                    code: -32600,
+                    message: `thread not found: ${nativeThreadId}`,
+                  },
                 },
               },
-            },
-            {
-              type: "expect_outbound",
-              label: "resume unloaded native thread",
-              frame: {
-                id: 4,
-                method: "thread/resume",
-                params: {
-                  threadId: nativeThreadId,
-                  excludeTurns: true,
-                  config: CodexAdapterV2.CODEX_THREAD_CONFIG,
+              {
+                type: "expect_outbound",
+                label: "resume unloaded native thread",
+                frame: {
+                  id: 4,
+                  method: "thread/resume",
+                  params: {
+                    threadId: nativeThreadId,
+                    excludeTurns: true,
+                    config: {
+                      ...CodexAdapterV2.CODEX_THREAD_CONFIG,
+                      ...(configured
+                        ? {
+                            "mcp_servers.docs": {
+                              command: "npx",
+                              args: ["docs-mcp"],
+                              env: { DOCS_TOKEN: "docs-token" },
+                            },
+                            "mcp_servers.weather": {
+                              url: "https://weather.test/mcp",
+                              http_headers: { Authorization: "Bearer weather-token" },
+                            },
+                          }
+                        : {}),
+                    },
+                  },
                 },
               },
-            },
-            {
-              type: "emit_inbound",
-              label: "native thread resumed",
-              frame: {
-                id: 4,
-                result: {
-                  thread: { id: nativeThreadId, updatedAt: 1782622450 },
+              {
+                type: "emit_inbound",
+                label: "native thread resumed",
+                frame: {
+                  id: 4,
+                  result: {
+                    thread: { id: nativeThreadId, updatedAt: 1782622450 },
+                  },
                 },
               },
-            },
-            {
-              type: "expect_outbound",
-              label: "retry MCP resource read",
-              frame: {
-                id: 5,
-                method: "mcpServer/resource/read",
-                params: {
-                  threadId: nativeThreadId,
-                  server: "weather",
-                  uri: MCP_APP_RESOURCE,
+              {
+                type: "expect_outbound",
+                label: "retry MCP resource read",
+                frame: {
+                  id: 5,
+                  method: "mcpServer/resource/read",
+                  params: {
+                    threadId: nativeThreadId,
+                    server: "weather",
+                    uri: MCP_APP_RESOURCE,
+                  },
                 },
               },
-            },
-            {
-              type: "emit_inbound",
-              label: "MCP resource read succeeds",
-              frame: { id: 5, result: resourceResult },
-            },
-          ],
-        });
+              {
+                type: "emit_inbound",
+                label: "MCP resource read succeeds",
+                frame: { id: 5, result: resourceResult },
+              },
+            ],
+          });
 
-        const resumeParams: Array<unknown> = [];
-        const harness = yield* makeCodexReplayHarness(transcript, undefined, (method, params) =>
-          Effect.sync(() => {
-            if (method === "thread/resume") resumeParams.push(params);
-          }),
-        );
-        const mcpApps = harness.runtime.mcpApps;
-        assert.ok(mcpApps, "Codex runtime should expose MCP apps");
+          const resumeParams: Array<unknown> = [];
+          const harness = yield* makeCodexReplayHarness(transcript, undefined, (method, params) =>
+            Effect.sync(() => {
+              if (method === "thread/resume") resumeParams.push(params);
+            }),
+          );
+          const mcpApps = harness.runtime.mcpApps;
+          assert.ok(mcpApps, "Codex runtime should expose MCP apps");
 
-        const result = yield* mcpApps.readResource({
-          providerThread: harness.providerThread,
-          server: "weather",
-          uri: MCP_APP_RESOURCE,
-        });
+          const result = yield* mcpApps.readResource({
+            providerThread: harness.providerThread,
+            server: "weather",
+            uri: MCP_APP_RESOURCE,
+          });
 
-        assert.deepEqual(result, resourceResult);
-        // The shared app-server session's cwd and model belong to whichever thread opened it.
-        // Codex must resume this thread with its own saved cwd, or it loads another
-        // project's MCP servers and drops this project's.
-        assert.equal(resumeParams.length, 1);
-        assert.ok(!Predicate.hasProperty(resumeParams[0], "cwd"), "resume must not send a cwd");
-        assert.ok(!Predicate.hasProperty(resumeParams[0], "model"), "resume must not send a model");
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            IdAllocator.layer,
-            McpProviderSessions.layer,
-            NodeServices.layer,
-            NodeCrypto.layer,
+          assert.deepEqual(result, resourceResult);
+          // The shared app-server session's cwd and model belong to whichever thread opened it.
+          // Codex must resume this thread with its own saved cwd, or it loads another
+          // project's MCP servers and drops this project's.
+          assert.equal(resumeParams.length, 1);
+          assert.ok(!Predicate.hasProperty(resumeParams[0], "cwd"), "resume must not send a cwd");
+          assert.ok(
+            !Predicate.hasProperty(resumeParams[0], "model"),
+            "resume must not send a model",
+          );
+        }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              IdAllocator.layer,
+              McpProviderSessions.layer,
+              NodeServices.layer,
+              NodeCrypto.layer,
+              Layer.mock(McpServers.McpServers)({
+                forProviderInstance: (instanceId, threadId) => {
+                  assert.equal(instanceId, CodexAdapterV2.CODEX_DEFAULT_INSTANCE_ID);
+                  assert.equal(threadId, ThreadId.make(`thread-mcp-resource-thread-recovery`));
+                  return Effect.succeed(
+                    configured
+                      ? [
+                          {
+                            name: "docs",
+                            transport: "stdio",
+                            command: "npx",
+                            args: ["docs-mcp"],
+                            env: { DOCS_TOKEN: "docs-token" },
+                          },
+                          {
+                            name: "weather",
+                            transport: "http",
+                            url: "https://weather.test/mcp",
+                            headers: { Authorization: "Bearer weather-token" },
+                          },
+                        ]
+                      : [],
+                  );
+                },
+              }),
+            ),
           ),
         ),
       ),
-    ),
   );
 
   it.effect("captures an MCP app's resource and holds the turn open until it lands", () =>
