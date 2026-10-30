@@ -1491,6 +1491,7 @@ export function PullRequestsPage() {
             onAddBrowserInProfile={() => undefined}
             onAddTerminal={() => undefined}
             onAddDiff={() => undefined}
+            onAddReview={() => undefined}
             onAddFiles={() => undefined}
             onAddPullRequest={() => undefined}
             onAddPullRequests={() => undefined}

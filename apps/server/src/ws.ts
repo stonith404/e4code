@@ -208,6 +208,7 @@ import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import { refreshPushedPullRequests } from "./git/refreshPushedPullRequests.ts";
 import { linkCreatedPullRequest } from "./git/linkCreatedPullRequest.ts";
+import * as ReviewGuideService from "./review/ReviewGuideService.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
 import * as ProjectService from "./project/ProjectService.ts";
@@ -1314,6 +1315,7 @@ export const layerWsRpc = (
       const directEndpoints = yield* DirectEndpoints.DirectEndpoints;
       const gitWorkflow = yield* GitWorkflowService.GitWorkflowService;
       const review = yield* ReviewService.ReviewService;
+      const reviewGuide = yield* ReviewGuideService.ReviewGuideService;
       const vcsProvisioning = yield* VcsProvisioningService.VcsProvisioningService;
       const vcsStatusBroadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
       const terminalManager = yield* TerminalManager.TerminalManager;
@@ -3004,6 +3006,8 @@ export const layerWsRpc = (
         [WS_METHODS.reviewGetBranchCommits]: (input) => review.getBranchCommits(input),
         [WS_METHODS.reviewGetDiffPreview]: (input) => review.getDiffPreview(input),
         [WS_METHODS.reviewGetDiffFileContents]: (input) => review.getDiffFileContents(input),
+        [WS_METHODS.reviewGetGuide]: (input) => reviewGuide.get(input),
+        [WS_METHODS.reviewGenerateGuide]: (input) => reviewGuide.generate(input),
         [WS_METHODS.terminalOpen]: (input) => terminalManager.open(input),
         [WS_METHODS.terminalAttach]: (input, metadata) =>
           terminalManager.attachOutputStream(input, terminalViewerId(metadata)),
@@ -3270,6 +3274,7 @@ export const layer = Layer.unwrap(
     const serverSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
     const pullRequests = yield* PullRequestService.PullRequestService;
     const reviewGuides = yield* PullRequestReviewGuideService.PullRequestReviewGuideService;
+    const localReviewGuides = yield* ReviewGuideService.ReviewGuideService;
     const peerLinks = yield* PeerLinks.PeerLinks;
     const peerLinkRequests = yield* PeerLinkRequests.PeerLinkRequests;
     const sql = yield* SqlClient.SqlClient;
@@ -3350,6 +3355,9 @@ export const layer = Layer.unwrap(
                   PullRequestReviewGuideService.PullRequestReviewGuideService,
                   reviewGuides,
                 ),
+              ),
+              Layer.provide(
+                Layer.succeed(ReviewGuideService.ReviewGuideService, localReviewGuides),
               ),
               Layer.provide(Layer.succeed(PeerLinks.PeerLinks, peerLinks)),
               Layer.provide(Layer.succeed(PeerLinkRequests.PeerLinkRequests, peerLinkRequests)),

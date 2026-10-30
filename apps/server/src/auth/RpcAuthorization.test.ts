@@ -51,6 +51,12 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+  it("keeps writing a local review guide, which runs a model, behind operate scope", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.reviewGenerateGuide)).toBe(
+      AuthOrchestrationOperateScope,
+    );
+  });
+
   it("separates passive terminal observation from operations that can change a shell", () => {
     for (const method of [WS_METHODS.terminalObserve, WS_METHODS.subscribeTerminalMetadata]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthTerminalReadScope);
