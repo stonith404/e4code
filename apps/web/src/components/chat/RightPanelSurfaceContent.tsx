@@ -29,6 +29,7 @@ const PreviewPanel = lazy(() =>
   import("../preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
 );
 const DiffPanel = lazy(() => import("../DiffPanel"));
+const ReviewPanel = lazy(() => import("../review/ReviewPanel"));
 const DevicePanel = lazy(() =>
   import("../device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
 );
@@ -110,6 +111,18 @@ export function RightPanelSurfaceContent(props: {
           <DiffPanel
             key={scopedThreadKey(threadRef)}
             mode="embedded"
+            composerDraftTarget={props.composerDraftTarget}
+            workspaceMutationId={props.workspaceMutationId}
+            visible={visible}
+          />
+        </Suspense>
+      );
+    case "review":
+      return (
+        <Suspense fallback={null}>
+          <ReviewPanel
+            key={scopedThreadKey(threadRef)}
+            threadRef={threadRef}
             composerDraftTarget={props.composerDraftTarget}
             workspaceMutationId={props.workspaceMutationId}
             visible={visible}
