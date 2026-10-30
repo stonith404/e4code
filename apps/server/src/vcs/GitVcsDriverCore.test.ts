@@ -4020,6 +4020,74 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
+    it.effect("reports added, deleted and renamed files in unpushed metadata", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const remote = yield* makeTmpDir("git-vcs-driver-remote-");
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        yield* writeTextFile(cwd, "deleted.txt", "delete this file\n");
+        yield* writeTextFile(cwd, "before.txt", "keep this renamed file\n");
+        yield* git(cwd, ["add", "."]);
+        yield* git(cwd, ["commit", "-m", "base files"]);
+        yield* git(remote, ["init", "--bare"]);
+        yield* git(cwd, ["remote", "add", "origin", remote]);
+        yield* git(cwd, ["push", "-u", "origin", initialBranch]);
+        yield* git(cwd, ["rm", "deleted.txt"]);
+        yield* git(cwd, ["mv", "before.txt", "after.txt"]);
+        yield* writeTextFile(cwd, "added.txt", "new file\n");
+        yield* git(cwd, ["add", "."]);
+        yield* git(cwd, ["commit", "-m", "unpushed file types"]);
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+        const preview = yield* driver.getReviewDiffPreview({ cwd, unpushed: true });
+        assert.deepStrictEqual(
+          preview.sources[0]!.files?.map(({ path, changeType }) => ({ path, changeType })),
+          [
+            { path: "added.txt", changeType: "new" },
+            { path: "after.txt", changeType: "rename-pure" },
+            { path: "deleted.txt", changeType: "deleted" },
+          ],
+        );
+      }),
+    );
+
+    it.effect("limits the unpushed source to commits ahead of the upstream", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const remote = yield* makeTmpDir("git-vcs-driver-remote-");
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        yield* git(remote, ["init", "--bare"]);
+        yield* git(cwd, ["remote", "add", "origin", remote]);
+        yield* git(cwd, ["push", "-u", "origin", initialBranch]);
+        yield* writeTextFile(cwd, "README.md", "# committed\n");
+        yield* git(cwd, ["commit", "-am", "unpushed"]);
+        yield* writeTextFile(cwd, "README.md", "# committed\nuncommitted\n");
+        yield* writeTextFile(cwd, "untracked.txt", "new\n");
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+
+        const preview = yield* driver.getReviewDiffPreview({ cwd, unpushed: true });
+        assert.lengthOf(preview.sources, 1);
+        const source = preview.sources[0]!;
+        assert.strictEqual(source.kind, "unpushed");
+        assert.strictEqual(source.baseRef, `origin/${initialBranch}`);
+        assert.deepStrictEqual(source.files, [
+          {
+            path: "README.md",
+            previousPath: null,
+            changeType: "change",
+            additions: 1,
+            deletions: 1,
+          },
+        ]);
+        assert.notInclude(source.diff, "uncommitted");
+
+        const contents = yield* driver.getReviewDiffFileContents(
+          makeReviewDiffFileContentsInput(cwd, { sourceKind: "unpushed", baseRef: source.baseRef }),
+        );
+        assert.strictEqual(contents.oldContents, "# test\n");
+        assert.strictEqual(contents.newContents, "# committed\n");
+      }),
+    );
+
     it.effect("reads a base ref that looks like an option as a revision", () =>
       Effect.gen(function* () {
         const cwd = yield* makeTmpDir();
@@ -4824,6 +4892,14 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
           ]);
           assert.strictEqual(source.diff.trim(), defaultPatch);
         }
+        // The fork's Unpushed scope must use the same non-minimizing algorithm after commit.
+        yield* git(cwd, ["add", "."]);
+        yield* git(cwd, ["commit", "-m", "reordered repeated lines"]);
+        const unpushed = yield* driver.getReviewDiffPreview({ cwd, unpushed: true });
+        assert.lengthOf(unpushed.sources, 1);
+        assert.strictEqual(unpushed.sources[0]!.kind, "unpushed");
+        assert.deepStrictEqual(unpushed.sources[0]!.files, preview.sources[0]!.files);
+        assert.strictEqual(unpushed.sources[0]!.diff.trim(), defaultPatch);
       }),
     );
 
