@@ -6,16 +6,16 @@ Use a **scheduled task** for a single prompt on a timer or webhook; use a **work
 
 ## Enable workflows
 
-Turn on **Settings → Labs → Workflows** on the server that will run them (or set `"workflowsEnabled": true` in `~/.t3/userdata/settings.json` on headless servers). Existing runs pause while disabled and resume when re-enabled.
+Turn on **Settings → Labs → Workflows** on the server that will run them (or set `"workflowsEnabled": true` in `~/.e4/userdata/settings.json` on headless servers). Existing runs pause while disabled and resume when re-enabled.
 
 ## Create a workflow
 
-Place `.ts` files in `~/.t3/workflows/` (or the path in `T3CODE_WORKFLOWS`). The server watches the folder and hot-reloads valid edits.
+Place `.ts` files in `~/.e4/workflows/` (or the path in `T3CODE_WORKFLOWS`). The server watches the folder and hot-reloads valid edits.
 
-- **With an agent (recommended)**: Copy the [`t3-workflows` skill](https://github.com/pingdotgg/t3code/blob/main/skills/t3-workflows/SKILL.md) into your agent's skills folder (e.g. `~/.claude/skills/` or `~/.agents/skills/`) and describe what you want.
-- **Directly**: Edit files in `~/.t3/workflows/` or use **Definitions** on the Workflows page (**Open workflows** in the command palette; saving/deleting in the app requires terminal access).
+- **With an agent (recommended)**: Copy the [`t3-workflows` skill](https://github.com/pingdotgg/e4code/blob/main/skills/t3-workflows/SKILL.md) into your agent's skills folder (e.g. `~/.claude/skills/` or `~/.agents/skills/`) and describe what you want.
+- **Directly**: Edit files in `~/.e4/workflows/` or use **Definitions** on the Workflows page (**Open workflows** in the command palette; saving/deleting in the app requires terminal access).
 
-Example (`~/.t3/workflows/release.ts`):
+Example (`~/.e4/workflows/release.ts`):
 
 ```ts
 const { workflow, step, ask, stop, title } = T3;
