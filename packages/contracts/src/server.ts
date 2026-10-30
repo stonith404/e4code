@@ -642,6 +642,8 @@ export const ServerConfig = Schema.Struct({
   secretProviderSettings: Schema.optionalKey(Schema.Boolean),
   /** Secret settings may point at a secret provider; older servers drop the reference. */
   secretReferences: Schema.optionalKey(Schema.Boolean),
+  /** Settings patches may carry `mcpServers`; older servers drop the key without an error. */
+  mcpServerSettings: Schema.optionalKey(Schema.Boolean),
   scratchWorkspaceRoot: Schema.optionalKey(TrimmedNonEmptyString),
   newProjectsRoot: Schema.optionalKey(TrimmedNonEmptyString),
   /**
