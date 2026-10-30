@@ -1,6 +1,6 @@
 # Observability
 
-Server observability has three outputs: pretty stdout logs (not persisted locally, except SSH-managed launches at `~/.t3/ssh-launch/<state>/server.log`), a local NDJSON trace file (always on), and optional OTLP export (traces, metrics, logs).
+Server observability has three outputs: pretty stdout logs (not persisted locally, except SSH-managed launches at `~/.e4/ssh-launch/<state>/server.log`), a local NDJSON trace file (always on), and optional OTLP export (traces, metrics, logs).
 
 ## Local traces and event-loop stalls
 
@@ -50,7 +50,7 @@ vp run dev
 On macOS and Linux (not Windows), send `SIGUSR2` to the server PID from `server-runtime.json` (in the server's state dir beside `logs/`) to write `<logsDir>/server-<pid>-<timestamp>.heapsnapshot` for Chrome DevTools Memory tab:
 
 ```sh
-pid="$(jq .pid "${T3CODE_HOME:-$HOME/.t3}/userdata/server-runtime.json")"
+pid="$(jq .pid "${T3CODE_HOME:-$HOME/.e4}/userdata/server-runtime.json")"
 ps -p "$pid" -o command=   # verify it is the T3 server—never signal desktop or launcher
 kill -USR2 "$pid"
 ```

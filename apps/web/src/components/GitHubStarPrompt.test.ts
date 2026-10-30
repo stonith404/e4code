@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import type { toastManager } from "./ui/toast";
 
-const { add, update, openExternal, commands, starred, page } = vi.hoisted(() => ({
+const { add, update, openExternal, commands, checkStarred, starred, page } = vi.hoisted(() => ({
   add: vi.fn<typeof toastManager.add>(),
   update: vi.fn<typeof toastManager.update>(),
   openExternal: vi.fn(async (_url: string) => {}),
   commands: { checkStarred: {}, star: {} },
+  checkStarred: vi.fn(),
   starred: { value: false, failed: false, starWorks: true, duringCheck: () => {} },
   page: {
     focused: true,
@@ -20,7 +21,8 @@ vi.mock("../localApi", () => ({ readLocalApi: () => ({ shell: { openExternal } }
 vi.mock("../rpc/atomRegistry", () => ({ appAtomRegistry: {} }));
 vi.mock("../state/sourceControl", () => ({ sourceControlEnvironment: commands }));
 vi.mock("@t3tools/client-runtime/state/runtime", () => ({
-  runAtomCommand: async (_registry: unknown, command: unknown) => {
+  runAtomCommand: async (_registry: unknown, command: unknown, input: unknown) => {
+    if (command === commands.checkStarred) checkStarred(input);
     if (command === commands.star) return { _tag: "Success", value: starred.starWorks };
     starred.duringCheck();
     return starred.failed ? { _tag: "Failure" } : { _tag: "Success", value: starred.value };
@@ -82,6 +84,17 @@ const click = (props: unknown) => (props as { onClick: () => unknown }).onClick(
 
 describe("recordPromptSent", () => {
   vi.useFakeTimers();
+
+  it("asks for a star on the E4 fork, not upstream", async () => {
+    setup({ sent: 5 });
+    checkStarred.mockClear();
+    await (await startSession()).send();
+    expect(add.mock.lastCall?.[0].title).toBe("Enjoying E4 Code?");
+    expect(checkStarred.mock.lastCall?.[0]).toMatchObject({
+      input: { repository: "stonith404/e4code" },
+    });
+    vi.unstubAllGlobals();
+  });
 
   it("asks only after the focused page is idle", async () => {
     setup({ sent: 5 });
@@ -178,7 +191,7 @@ describe("recordPromptSent", () => {
     await (await startSession()).send();
     click(add.mock.lastCall?.[0].actionProps);
     await vi.advanceTimersByTimeAsync(0);
-    expect(openExternal).toHaveBeenCalledWith("https://github.com/pingdotgg/t3code");
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/stonith404/e4code");
     expect(update.mock.lastCall?.[1]).not.toMatchObject({
       actionProps: { children: "Open GitHub" },
     });

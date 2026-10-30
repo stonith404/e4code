@@ -8,7 +8,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeOS from "node:os";
 import { assert, it, vi } from "vite-plus/test";
 
-import { fixPath, hydratePosixHome, refreshWindowsPath } from "./os-jank.ts";
+import { fixPath, hydratePosixHome, refreshWindowsPath, resolveBaseDir } from "./os-jank.ts";
 
 vi.mock("node:child_process", { spy: true });
 
@@ -228,4 +228,15 @@ effectIt.effect("adds a directory an installer wrote to the registry after launc
 
     assert.deepEqual(env, { PATH: `C:\\Tools;C:\\Windows;${installed}` });
   }),
+);
+
+effectIt.effect("isolates the default E4 server home from T3 Code", () =>
+  Effect.gen(function* () {
+    assert.equal(yield* resolveBaseDir(undefined), "/home/e4-test/.e4");
+    assert.equal(yield* resolveBaseDir("  "), "/home/e4-test/.e4");
+    assert.equal(yield* resolveBaseDir("~/custom"), "/home/e4-test/custom");
+  }).pipe(
+    Effect.provideService(HostProcess.HomeDirectory, "/home/e4-test"),
+    Effect.provide(NodeServices.layer),
+  ),
 );
