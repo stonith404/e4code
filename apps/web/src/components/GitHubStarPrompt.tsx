@@ -12,7 +12,7 @@ import { toastManager } from "./ui/toast";
 // Separate keys so a count written by another tab can never undo a dismissal.
 const SENT_KEY = "t3code:github-star-prompt:sent";
 const DISMISSED_KEY = "t3code:github-star-prompt:dismissed";
-const REPOSITORY = "pingdotgg/t3code";
+const REPOSITORY = "stonith404/e4code";
 const PROMPTS_BEFORE_ASKING = 5;
 
 let shownThisSession = false;
@@ -27,7 +27,7 @@ function dismiss() {
 function showStarPrompt() {
   const close = () => toastManager.close(id);
   const id = toastManager.add({
-    title: "Enjoying T3 Code?",
+    title: "Enjoying E4 Code?",
     description: "Give us a star on GitHub to let us know!",
     timeout: 0,
     onClose: dismiss,
