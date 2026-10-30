@@ -230,6 +230,29 @@ function mapSecretFieldGroups(
       ) as SimlockDeviceHostConfig,
   );
 
+  const mapSecret = (secretName: string, value: string) => {
+    // Individual fields preserve case-sensitive env keys and existing secret slot names.
+    return mapFields({ value }, ["value"], () => secretName).value as string;
+  };
+  const mapSecretMap = (prefix: string, values: Readonly<Record<string, string>>) =>
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        mapSecret(`${prefix}-${encode(key)}`, value),
+      ]),
+    );
+  const mcpServers = settings.mcpServers.map((server) => {
+    const prefix = `mcp-server-${encode(server.name)}`;
+    return server.transport === "stdio"
+      ? { ...server, env: mapSecretMap(`${prefix}-env`, server.env) }
+      : {
+          ...server,
+          headers: mapSecretMap(`${prefix}-header`, server.headers),
+          oauthClientSecret: mapSecret(`${prefix}-oauth-client-secret`, server.oauthClientSecret),
+          oauthSession: mapSecret(`${prefix}-oauth-session`, server.oauthSession),
+        };
+  });
+
   return {
     ...settings,
     providerInstances,
@@ -237,6 +260,7 @@ function mapSecretFieldGroups(
     usageLimitSources,
     easDeviceHosts,
     simlockDeviceHosts,
+    mcpServers,
   };
 }
 
