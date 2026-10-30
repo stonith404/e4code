@@ -156,6 +156,10 @@ import {
   ReviewDiffPreviewError,
   ReviewDiffPreviewInput,
   ReviewDiffPreviewResult,
+  ReviewGenerateGuideInput,
+  ReviewGuideError,
+  ReviewGuideInput,
+  ReviewGuideResult,
 } from "./review.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import { OrchestrationSearchThreadsError } from "./threadSearch.ts";
@@ -466,6 +470,8 @@ export const WS_METHODS = {
   reviewGetBranchCommits: "review.getBranchCommits",
   reviewGetDiffPreview: "review.getDiffPreview",
   reviewGetDiffFileContents: "review.getDiffFileContents",
+  reviewGetGuide: "review.getGuide",
+  reviewGenerateGuide: "review.generateGuide",
 
   terminalOpen: "terminal.open",
   terminalAttach: "terminal.attach",
@@ -1553,6 +1559,18 @@ const WsReviewGetDiffFileContentsRpc = Rpc.make(WS_METHODS.reviewGetDiffFileCont
   error: Schema.Union([ReviewDiffPreviewError, EnvironmentAuthorizationError]),
 });
 
+const WsReviewGetGuideRpc = Rpc.make(WS_METHODS.reviewGetGuide, {
+  payload: ReviewGuideInput,
+  success: ReviewGuideResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsReviewGenerateGuideRpc = Rpc.make(WS_METHODS.reviewGenerateGuide, {
+  payload: ReviewGenerateGuideInput,
+  success: ReviewGuideResult,
+  error: Schema.Union([ReviewDiffPreviewError, ReviewGuideError, EnvironmentAuthorizationError]),
+});
+
 const WsTerminalOpenRpc = Rpc.make(WS_METHODS.terminalOpen, {
   payload: TerminalOpenInput,
   success: TerminalSessionSnapshot,
@@ -2156,6 +2174,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsReviewGetBranchCommitsRpc,
   WsReviewGetDiffPreviewRpc,
   WsReviewGetDiffFileContentsRpc,
+  WsReviewGetGuideRpc,
+  WsReviewGenerateGuideRpc,
   WsTerminalOpenRpc,
   WsTerminalAttachRpc,
   WsTerminalObserveRpc,
