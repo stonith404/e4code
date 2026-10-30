@@ -25,3 +25,11 @@ Keeps upstream's three icon designs (black production, night-sky nightly, bluepr
 - Android monochrome and notification marks redrawn by hand at the same bounds as upstream's T3 silhouettes.
 - Installable web icons (192 and 512 pixels) use the E4 mark for every channel; these are resized from the universal E4 exports.
 - `T3Wordmark` in web and mobile, the mobile widget mark, `assets/prod/logo.svg`, the DMG backgrounds and the mobile showcase favicon use the E4 path. Component and file names stay as upstream's to keep syncs small.
+
+## ci: add E4 release workflow
+
+`e4-release.yml` replaces upstream's `release.yml`, which only runs in pingdotgg/t3code. It reuses `release-desktop.yml` on GitHub-hosted runners, unsigned, without T3 Connect, npm, AUR, web, mobile or Discord publishing. Nightlies run hourly when main has changed (at least 6 hours apart). Stable releases come from a `vX.Y.Z` tag or a manual dispatch. Upstream's other workflows are disabled in the repository settings.
+
+macOS builds use macOS 15 ARM64 and macOS 26 Intel runners to avoid the macOS 26 ARM64 capacity queue.
+
+Upstream syncs rebase these patches onto upstream's main, so `check-nightly-release.cjs` also releases a main that diverged from the last nightly, instead of skipping it.
