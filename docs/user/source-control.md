@@ -20,6 +20,32 @@ commit links follow your **Open links in** setting; on web, when that opens a ne
 shows an **Open link** button. Command/Ctrl+Click always opens the link in your browser. Commit links follow the **Open pull requests in T3 Code**
 setting in **Settings → Diffs**.
 
+## Review local changes
+
+Open a **Review** tab from the right panel's **+** menu and pick what to review: **Changes**
+(everything on the branch against its base, committed or not), **Uncommitted**, or **Unpushed**
+(commits not yet on the branch's upstream, or on the base branch when it has none).
+
+You can also open it from **Review** in the thread details panel; if you last left it full screen,
+it opens full screen.
+
+The sidebar lists every changed file, as a list or a folder tree. Select a file to read the whole
+file with its changes highlighted; the strip beside it marks where the file changed, and clicking it
+jumps there; the arrows in the header, or `↑` and `↓`, step to the previous or
+next file. Select lines to leave a comment for the agent, as in the diff panel.
+
+Tick **Reviewed** (`R`) on a file once you have read it, or flag it to **check later** (`M`). The sidebar and the
+header show your progress. If a reviewed file changes afterwards, for example because the agent edits
+it again, it is marked **Changed** until you review it again. Marks are kept in this browser or app,
+separately for each thread and comparison.
+
+Switch the sidebar to **Review guide** (the sparkles button) to have an agent summarize the changes,
+with a diagram when one helps, and group the changed files in a good order to read them; the arrows
+then follow that order. The guide is written in a separate copy of your changes, so you can keep
+working; it takes a few minutes. It uses the review guide model from Settings → Source control when
+review guides are on, and the source control writer model otherwise; only Claude and Codex can write
+guides. When the changes move on, the guide offers to rewrite itself.
+
 ## Connect an account
 
 Install Git and configure authentication on the machine running your T3 Code server. For a remote

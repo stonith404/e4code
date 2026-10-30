@@ -5,6 +5,7 @@ import { type ChatAttachment, type ModelSelection, TextGenerationError } from "@
 import { formatGeneratedBranchName, sanitizeFeatureBranchName } from "@t3tools/shared/git";
 import { extractJsonObject } from "@t3tools/shared/schemaJson";
 
+import { buildLocalReviewGuidePrompt } from "./localReviewGuidePrompt.ts";
 import type { ProviderTextGeneration } from "./textGeneration.ts";
 import {
   buildBranchNamePrompt,
@@ -158,13 +159,36 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
   const generateReviewGuide: ProviderTextGeneration["generateReviewGuide"] = Effect.fn(
     `${name}.generateReviewGuide`,
   )(function* (input) {
-    return yield* run({
+    const request = {
       operation: "generateReviewGuide",
       cwd: input.cwd,
       modelSelection: input.modelSelection,
       investigate: { timeoutMs: INVESTIGATION_TIMEOUT_MS },
-      ...buildReviewGuidePrompt(input),
-    });
+    } as const;
+    if ("local" in input) {
+      const { summary, groups } = yield* run({
+        ...request,
+        ...buildLocalReviewGuidePrompt({
+          ...input.local,
+          baseCommit: input.baseCommit,
+          instructions: input.instructions,
+        }),
+      });
+      // File-only stops let the caller reuse the pull request guide's coverage normalization.
+      return {
+        summary,
+        stops: groups.map((group) => ({
+          title: group.title,
+          summary: "",
+          attention: null,
+          excerpts: [],
+          files: group.files.map((path) => ({ path })),
+          notes: [],
+          questions: [],
+        })),
+      };
+    }
+    return yield* run({ ...request, ...buildReviewGuidePrompt(input) });
   });
 
   return {
