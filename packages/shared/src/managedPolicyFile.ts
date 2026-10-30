@@ -29,13 +29,13 @@ export class ManagedPolicyFileError extends Schema.TaggedError<ManagedPolicyFile
 export function managedPolicyPath(platform: NodeJS.Platform): string {
   switch (platform) {
     case "darwin":
-      return "/Library/Application Support/T3Code/policy.json";
+      return "/Library/Application Support/E4Code/policy.json";
     case "win32":
       // Not ProgramData, where a user can create the folder first and own it; and not
       // %ProgramFiles%, which a user can point somewhere they write.
-      return "C:\\Program Files\\T3Code\\policy.json";
+      return "C:\\Program Files\\E4Code\\policy.json";
     default:
-      return "/etc/t3code/policy.json";
+      return "/etc/e4code/policy.json";
   }
 }
 
@@ -89,8 +89,8 @@ export const readManagedPolicyFile = Effect.fn("readManagedPolicyFile")(function
 
 /** Where a configuration profile's managed preferences land on macOS. */
 export const MACOS_MANAGED_PREFERENCES_PATH =
-  "/Library/Managed Preferences/com.t3tools.t3code.plist";
-const WINDOWS_POLICY_SUBKEY = "SOFTWARE\\Policies\\T3Tools\\T3Code";
+  "/Library/Managed Preferences/com.eliasschneider.e4code.plist";
+const WINDOWS_POLICY_SUBKEY = "SOFTWARE\\Policies\\EliasSchneider\\E4Code";
 /** The registry key Group Policy and Intune write to on Windows; `Policy` holds the JSON. */
 export const WINDOWS_POLICY_KEY = `HKLM\\${WINDOWS_POLICY_SUBKEY}`;
 // An absolute path: an earlier PATH entry could otherwise answer that there is no policy.

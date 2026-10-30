@@ -210,3 +210,16 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 ## Additional tips
 
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
+
+## E4 fork
+
+This repository is E4 Code, a personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). Where these rules conflict with the ones above, these win.
+
+- The fork is a linear stack of patch commits on top of upstream's main (`upstream/main..origin/main`), with no merge commits. An Umpteenth job rebases the stack onto upstream and force-pushes, so the repository has no sync workflow.
+- Keep each patch as small as it can be so rebases stay clean. Keep upstream's file, component and identifier names unless the patch needs a rename.
+- Every patch commit carries its own short entry in [FORK_CHANGES.md](FORK_CHANGES.md), headed by the commit subject. Never add it in a separate docs commit.
+- A fix, follow-up or tweak to an existing patch is folded into that patch's commit and pushed with `--force-with-lease`. Never add a separate fix commit.
+- A patch that adds a user-facing feature also adds a bullet to the fork section at the top of [README.md](README.md). Describe what users get, not technical details such as branding, install paths or release plumbing.
+- Naming: `T3` becomes `E4` and `t3` becomes `e4`, case-matched. Bundle IDs use the `com.eliasschneider` domain, such as `com.eliasschneider.e4code`. The app name has no "Beta" suffix.
+- Only `e4-release.yml` and `release-desktop.yml` may run. Upstream's other workflows are disabled in the repository settings, and the sync job disables new ones after each sync.
+- The main checkout is not a linked worktree, so `vp run dev` defaults to the shared `~/.t3`. Pass `--home-dir "$PWD/.t3"` there.
