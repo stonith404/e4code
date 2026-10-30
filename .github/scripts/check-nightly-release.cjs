@@ -68,7 +68,8 @@ async function shouldReleaseNightly({ github, context, core, now = Date.now() })
     basehead: `${lastNightly.tag_name}...${context.sha}`,
     per_page: 1,
   });
-  if (comparison.status !== "ahead") {
+  // The fork rebases main onto upstream, so a main that diverged from the last nightly has new commits
+  if (comparison.status === "identical" || comparison.status === "behind") {
     core.info(
       `Candidate commit is ${comparison.status} relative to ${lastNightly.tag_name}. Skipping.`,
     );
