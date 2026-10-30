@@ -81,6 +81,7 @@ interface AnnotatableCodeViewProps {
     fileKey: string;
     fileVersion: number;
     collapsed: boolean;
+    edit?: boolean;
   }>;
   pendingFiles: ReadonlyArray<FileDiffMetadata>;
   sectionId: string;
@@ -100,6 +101,7 @@ interface AnnotatableCodeViewProps {
     collapsed: boolean,
   ) => ReactNode;
   onRevealSearchMatch: (fileKey: string) => void;
+  onItemEditChange?: CodeViewProps<DiffCommentAnnotationGroup, undefined>["onItemEditChange"];
 }
 
 interface DiffSelectionContext {
@@ -125,6 +127,7 @@ export function AnnotatableCodeView({
   renderHeaderFilenameSuffix,
   renderHeaderPrefix,
   onRevealSearchMatch,
+  onItemEditChange,
 }: AnnotatableCodeViewProps) {
   const addReviewComment = useComposerDraftStore((store) => store.addReviewComment);
   const removeReviewComment = useComposerDraftStore((store) => store.removeReviewComment);
@@ -159,7 +162,7 @@ export function AnnotatableCodeView({
     setSelectedLines(null);
   }
   const items: CodeViewDiffItem<DiffCommentAnnotationGroup>[] = files.map(
-    ({ fileDiff, filePath, fileKey, fileVersion, collapsed }) => {
+    ({ fileDiff, filePath, fileKey, fileVersion, collapsed, edit = false }) => {
       const persisted = reviewComments
         .filter(
           (comment) =>
@@ -185,8 +188,9 @@ export function AnnotatableCodeView({
         fileDiff,
         annotations,
         collapsed,
+        edit,
         version: fnv1a32(
-          `${fileVersion}:${collapsed ? "1" : "0"}:${annotations
+          `${fileVersion}:${collapsed ? "1" : "0"}:${edit ? "1" : "0"}:${annotations
             .flatMap((annotation) =>
               annotation.metadata.entries.map(
                 (entry) => `${entry.id}:${entry.rangeLabel}:${entry.text}`,
@@ -272,6 +276,7 @@ export function AnnotatableCodeView({
           }
         : {})}
       {...(renderCodeViewFooter ? { renderCodeViewFooter } : {})}
+      {...(onItemEditChange ? { onItemEditChange } : {})}
       items={items}
       selectedLines={selectedLines}
       onSelectedLinesChange={setSelectedLines}
