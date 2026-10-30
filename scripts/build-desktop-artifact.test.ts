@@ -1593,6 +1593,36 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
+  it.effect(
+    "signs macOS builds with an explicit identity and no notarization, unless --signed",
+    () =>
+      Effect.gen(function* () {
+        const macConfig = (signed: boolean) =>
+          createBuildConfig(
+            "mac",
+            "dmg",
+            "1.2.3",
+            signed,
+            false,
+            undefined,
+            undefined,
+            false,
+            "arm64",
+            "E4 Code Self-Signed",
+          ).pipe(Effect.map((config) => config.mac as Record<string, unknown>));
+
+        const selfSigned = yield* macConfig(false);
+        assert.equal(selfSigned.identity, "E4 Code Self-Signed");
+        assert.equal(selfSigned.hardenedRuntime, false);
+        assert.equal(selfSigned.notarize, false);
+        assert.notProperty(selfSigned, "sign");
+
+        const appleSigned = yield* macConfig(true);
+        assert.notProperty(appleSigned, "identity");
+        assert.match(appleSigned.sign as string, /scripts[\\/]sign-macos\.ts$/);
+      }),
+  );
+
   it("parses Windows bsdtar member listings with CRLF line endings", () => {
     assert.deepStrictEqual(
       parseWslRuntimeArchiveMembers("./t3-1.2.3-linux-x64/t3\r\nt3-1.2.3-linux-x64/client/\r\n"),
@@ -1640,6 +1670,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
             skipBuild: Option.none(),
             keepStage: Option.none(),
             signed: Option.none(),
+            macSignIdentity: Option.none(),
             verbose: Option.none(),
             mockUpdates: Option.none(),
             mockUpdateServerPort: Option.none(),
@@ -1664,6 +1695,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         skipBuild: Option.some(false),
         keepStage: Option.some(false),
         signed: Option.some(false),
+        macSignIdentity: Option.none(),
         verbose: Option.some(false),
         mockUpdates: Option.some(false),
         mockUpdateServerPort: Option.none(),
