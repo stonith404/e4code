@@ -1311,7 +1311,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
   );
 
   it.effect(
-    "uses the same secret lifecycle for provider config, environment, host tokens, and quota keys",
+    "uses the same secret lifecycle for provider config, environment, host tokens, quota keys, and MCP servers",
     () =>
       Effect.gen(function* () {
         const service = yield* ServerSettingsModule.ServerSettingsService;
@@ -1354,6 +1354,30 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
               maxConcurrentSessions: 2,
             },
           ],
+          mcpServers: [
+            {
+              name: "docs",
+              enabled: true,
+              providerInstanceIds: [],
+              transport: "stdio",
+              command: "npx",
+              args: [],
+              env: { DOCS_API_KEY: "mcp-env-secret" },
+            },
+            {
+              name: "linear",
+              enabled: true,
+              providerInstanceIds: [],
+              transport: "http",
+              url: "https://mcp.example.test/mcp",
+              headers: { "X-Api-Key": "mcp-header-secret" },
+              oauth: true,
+              oauthClientId: "client",
+              oauthClientSecret: "mcp-client-secret",
+              oauthScopes: "",
+              oauthSession: "mcp-session-secret",
+            },
+          ],
         });
         const values = [
           "config-secret",
@@ -1363,6 +1387,10 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
           "gitcafe-secret",
           "quota-secret",
           "expo-secret",
+          "mcp-env-secret",
+          "mcp-header-secret",
+          "mcp-client-secret",
+          "mcp-session-secret",
         ];
         const client = ServerSettingsModule.redactServerSettingsForClient(saved, {
           secretReferences: true,
@@ -1380,6 +1408,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
           sourceControlHosts: client.sourceControlHosts,
           usageLimitSources: client.usageLimitSources,
           easDeviceHosts: client.easDeviceHosts,
+          mcpServers: client.mcpServers,
         });
         for (const value of values) assert.include(JSON.stringify(echoed), value);
         const renamed = yield* service.updateProviderInstance({
@@ -1431,6 +1460,10 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
           }),
           sourceControlHostSecretName({ kind: "gitcafe", field: "token", serverHost: null }),
           "usage-limit-source-aHVi",
+          "mcp-server-ZG9jcw-env-RE9DU19BUElfS0VZ",
+          "mcp-server-bGluZWFy-header-WC1BcGktS2V5",
+          "mcp-server-bGluZWFy-oauth-client-secret",
+          "mcp-server-bGluZWFy-oauth-session",
         ];
         for (const name of secretNames) {
           assert.isTrue(Option.isSome(yield* store.get(name)), name);
@@ -1463,6 +1496,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("server settings"
             gitcafe: { token: "" },
           },
           usageLimitSources: { [UsageLimitSourceId.make("hub")]: null },
+          mcpServers: [],
         });
         for (const name of secretNames) {
           assert.isTrue(Option.isNone(yield* store.get(name)));
