@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema";
-import { GitRefName, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { GitRefName, IsoDateTime, ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { GitCommandError } from "./git.ts";
+import { ModelSelection } from "./modelSelection.ts";
 import { VcsError } from "./vcs.ts";
 
 // An object id or HEAD, never an option-looking ref, since it is passed to git as a revision.
@@ -29,11 +30,13 @@ export const ReviewDiffPreviewInput = Schema.Struct({
   /** From a trackedOnly result, so the complete read adds only the untracked files. */
   completionToken: Schema.optionalKey(Schema.String),
   metadataOnly: Schema.optionalKey(Schema.Boolean),
+  /** Return only the commits not yet pushed, instead of the working-tree and branch sources. */
+  unpushed: Schema.optionalKey(Schema.Boolean),
   file: Schema.optionalKey(
     Schema.Struct({
       path: Schema.NonEmptyString,
       previousPath: Schema.NullOr(Schema.NonEmptyString),
-      sourceKind: Schema.Literals(["working-tree", "branch-range", "commit"]),
+      sourceKind: Schema.Literals(["working-tree", "branch-range", "unpushed", "commit"]),
       // The preview's change type; the server still confirms a tracked path before relying on it.
       changeType: Schema.optionalKey(ReviewDiffChangeType),
     }),
@@ -62,6 +65,7 @@ export type ReviewBranchCommitsResult = typeof ReviewBranchCommitsResult.Type;
 export const ReviewDiffPreviewSourceKind = Schema.Literals([
   "working-tree",
   "branch-range",
+  "unpushed",
   "commit",
 ]);
 export type ReviewDiffPreviewSourceKind = typeof ReviewDiffPreviewSourceKind.Type;
@@ -121,3 +125,56 @@ export type ReviewDiffPreviewResult = typeof ReviewDiffPreviewResult.Type;
 
 export const ReviewDiffPreviewError = Schema.Union([VcsError, GitCommandError]);
 export type ReviewDiffPreviewError = typeof ReviewDiffPreviewError.Type;
+
+export const ReviewGuideInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  sourceKind: Schema.Literals(["working-tree", "branch-range", "unpushed"]),
+  baseRef: Schema.optionalKey(GitRefName),
+});
+export type ReviewGuideInput = typeof ReviewGuideInput.Type;
+
+export const ReviewGenerateGuideInput = Schema.Struct({
+  ...ReviewGuideInput.fields,
+  projectId: ProjectId,
+  ignoreWhitespace: Schema.optionalKey(Schema.Boolean),
+});
+export type ReviewGenerateGuideInput = typeof ReviewGenerateGuideInput.Type;
+
+export const ReviewGuideGroup = Schema.Struct({
+  title: TrimmedNonEmptyString,
+  files: Schema.Array(TrimmedNonEmptyString),
+});
+export type ReviewGuideGroup = typeof ReviewGuideGroup.Type;
+
+export const ReviewGuide = Schema.Struct({
+  /** Markdown, possibly with mermaid diagrams. */
+  summary: Schema.String,
+  /** Every changed file, grouped and in reading order. */
+  groups: Schema.Array(ReviewGuideGroup),
+  /** The reviewed source's diffHash when the guide was written; a different hash means it is stale. */
+  diffHash: TrimmedNonEmptyString,
+  generatedAt: IsoDateTime,
+  modelSelection: ModelSelection,
+});
+export type ReviewGuide = typeof ReviewGuide.Type;
+
+export const ReviewGuideRun = Schema.Union([
+  Schema.TaggedStruct("Running", { startedAt: IsoDateTime }),
+  Schema.TaggedStruct("Failed", { failedAt: IsoDateTime, detail: TrimmedNonEmptyString }),
+]);
+export type ReviewGuideRun = typeof ReviewGuideRun.Type;
+
+export const ReviewGuideResult = Schema.Struct({
+  guide: Schema.NullOr(ReviewGuide),
+  run: Schema.NullOr(ReviewGuideRun),
+});
+export type ReviewGuideResult = typeof ReviewGuideResult.Type;
+
+export class ReviewGuideError extends Schema.TaggedError<ReviewGuideError>()("ReviewGuideError", {
+  detail: TrimmedNonEmptyString,
+  cause: Schema.optional(Schema.Defect()),
+}) {
+  override get message(): string {
+    return this.detail;
+  }
+}

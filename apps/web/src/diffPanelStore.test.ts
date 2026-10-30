@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
   resolveToolCallDiffTarget,
+  selectThreadReviewScope,
   useDiffPanelSessionStore,
   useDiffPanelStore,
 } from "./diffPanelStore";
@@ -14,6 +15,7 @@ describe("diffPanelStore", () => {
     useDiffPanelStore.setState({
       byThreadKey: {},
       branchBaseRefByThreadKey: {},
+      reviewScopeByThreadKey: {},
     });
     useDiffPanelSessionStore.setState({ collapsedFileKeysByScopeKey: {} });
   });
@@ -36,6 +38,29 @@ describe("diffPanelStore", () => {
     expect(useDiffPanelStore.getState().byThreadKey[scopedThreadKey(ref)]).toEqual({
       kind: "branch",
       baseRef: null,
+    });
+  });
+
+  it("defaults the review scope to the diff scope until one is chosen", () => {
+    const ref = { environmentId: EnvironmentId.make("env"), threadId: ThreadId.make("thread") };
+    const store = useDiffPanelStore.getState();
+    expect(selectThreadReviewScope(useDiffPanelStore.getState(), ref)).toBe("branch");
+    store.selectGitScope(ref, "unstaged");
+    expect(selectThreadReviewScope(useDiffPanelStore.getState(), ref)).toBe("unstaged");
+    store.selectReviewScope(ref, "unpushed");
+    store.selectGitScope(ref, "branch");
+    expect(selectThreadReviewScope(useDiffPanelStore.getState(), ref)).toBe("unpushed");
+  });
+
+  it("clears the review scope when a thread is deleted, even without a diff selection", () => {
+    const ref = { environmentId: EnvironmentId.make("env"), threadId: ThreadId.make("deleted") };
+    const other = { ...ref, threadId: ThreadId.make("kept") };
+    const store = useDiffPanelStore.getState();
+    store.selectReviewScope(ref, "unpushed");
+    store.selectReviewScope(other, "unstaged");
+    store.removeThread(ref);
+    expect(useDiffPanelStore.getState().reviewScopeByThreadKey).toEqual({
+      [scopedThreadKey(other)]: "unstaged",
     });
   });
 

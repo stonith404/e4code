@@ -2558,6 +2558,7 @@ export default function ChatView(props: ChatViewProps) {
     addDeviceSurfaceStable,
     addDiffSurfaceStable,
     addFilesSurfaceStable,
+    addReviewSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
     closePreviewPanelStable,
@@ -4212,7 +4213,12 @@ export default function ChatView(props: ChatViewProps) {
                     ? { onCheckoutPullRequestRequest: openPullRequestDialogStable }
                     : {})}
                   onComposerFocusRequest={scheduleComposerFocusStable}
-                  {...(isGitRepo ? { onOpenChanges: openChangesFromThreadPanelStable } : {})}
+                  {...(isGitRepo
+                    ? {
+                        onOpenChanges: openChangesFromThreadPanelStable,
+                        onOpenReview: addReviewSurfaceStable,
+                      }
+                    : {})}
                   onRunProjectScript={runProjectScriptStable}
                   onAddProjectScript={saveProjectScriptStable}
                   onUpdateProjectScript={updateProjectScriptStable}
@@ -4305,6 +4311,7 @@ export default function ChatView(props: ChatViewProps) {
           onDuplicateBrowser={duplicateBrowserSurfaceStable}
           onAddTerminal={addTerminalSurfaceStable}
           onAddDiff={addDiffSurfaceStable}
+          onAddReview={addReviewSurfaceStable}
           onAddFiles={addFilesSurfaceStable}
           onAddPullRequest={addPullRequestSurfaceStable}
           onAddPullRequests={addPullRequestsSurfaceStable}
