@@ -172,6 +172,35 @@ export function mapSettingsSecrets(
       ) as SimlockDeviceHostConfig,
   );
 
+  const mapSecret = (secretName: string, value: string) => {
+    const result = map({
+      secretName,
+      kind: "field",
+      value,
+      redacted: value === SECRET_REDACTED,
+      sensitive: true,
+    });
+    return result.redacted ? SECRET_REDACTED : result.value;
+  };
+  const mapSecretMap = (prefix: string, values: Readonly<Record<string, string>>) =>
+    Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key,
+        mapSecret(`${prefix}-${encode(key)}`, value),
+      ]),
+    );
+  const mcpServers = settings.mcpServers.map((server) => {
+    const prefix = `mcp-server-${encode(server.name)}`;
+    return server.transport === "stdio"
+      ? { ...server, env: mapSecretMap(`${prefix}-env`, server.env) }
+      : {
+          ...server,
+          headers: mapSecretMap(`${prefix}-header`, server.headers),
+          oauthClientSecret: mapSecret(`${prefix}-oauth-client-secret`, server.oauthClientSecret),
+          oauthSession: mapSecret(`${prefix}-oauth-session`, server.oauthSession),
+        };
+  });
+
   return {
     ...settings,
     providerInstances,
@@ -179,5 +208,6 @@ export function mapSettingsSecrets(
     usageLimitSources,
     easDeviceHosts,
     simlockDeviceHosts,
+    mcpServers,
   };
 }

@@ -121,6 +121,7 @@ import { codexAppServerArgs, resolveCodexLaunchArgs } from "../../provider/codex
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as McpServers from "../../mcpServers/McpServers.ts";
 import {
   MCP_APP_EXTENSION_ID,
   MCP_APP_MIME_TYPE,
@@ -1321,6 +1322,7 @@ const CODEX_T3_MCP_TOOL_TIMEOUT_SEC = 65 * 60;
 
 function codexThreadRuntimeParams(input: {
   readonly mcpSession: McpProviderSession.McpProviderSessionConfig | undefined;
+  readonly mcpServers: ReadonlyArray<McpServers.ProviderMcpServer>;
   readonly modelSelection?: { readonly model: string };
   readonly runtimePolicy?: ProviderAdapter.ProviderAdapterV2RuntimePolicy;
 }): {
@@ -1334,6 +1336,14 @@ function codexThreadRuntimeParams(input: {
     ...(input.modelSelection === undefined ? {} : { model: input.modelSelection.model }),
     config: {
       ...CODEX_THREAD_CONFIG,
+      ...Object.fromEntries(
+        input.mcpServers.map((server) => [
+          `mcp_servers.${server.name}`,
+          server.transport === "stdio"
+            ? { command: server.command, args: [...server.args], env: server.env }
+            : { url: server.url, http_headers: server.headers },
+        ]),
+      ),
       ...(mcpSession === undefined
         ? {}
         : {
@@ -1616,9 +1626,20 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
   adapterOptions: CodexAdapterV2Options,
 ) {
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
+  const mcpServerConfigs = yield* Effect.serviceOption(McpServers.McpServers);
   const readMcpSession = (threadId: ThreadId | null) =>
     // @effect-diagnostics-next-line effectSucceedWithVoid:off - This optional result requires undefined, not the wider void type.
     threadId === null ? Effect.succeed(undefined) : mcpSessions.read(threadId);
+  /** The T3 credential and the user's servers a thread's runtime params carry. */
+  const readThreadMcp = Effect.fn("CodexAdapterV2.readThreadMcp")(function* (
+    threadId: ThreadId | null,
+  ) {
+    const mcpSession = yield* readMcpSession(threadId);
+    const mcpServers = Option.isSome(mcpServerConfigs)
+      ? yield* mcpServerConfigs.value.forProviderInstance(adapterOptions.instanceId, mcpSession)
+      : [];
+    return { mcpSession, mcpServers };
+  });
   const { clientFactory, crypto, fileSystem, idAllocator, serverConfig } = adapterOptions;
   const continuationRequests = adapterOptions.continuationRequests;
 
@@ -6898,12 +6919,12 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
           }),
           ensureThread: (threadInput) =>
             ensureInitialized.pipe(
-              Effect.andThen(mcpSessions.read(threadInput.threadId)),
-              Effect.flatMap((mcpSession) =>
+              Effect.andThen(readThreadMcp(threadInput.threadId)),
+              Effect.flatMap((threadMcp) =>
                 client.request(
                   "thread/start",
                   codexThreadRuntimeParams({
-                    mcpSession,
+                    ...threadMcp,
                     modelSelection: threadInput.modelSelection,
                     runtimePolicy: threadInput.runtimePolicy,
                   }),
@@ -6935,9 +6956,9 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                 threadId: nativeThreadId,
                 excludeTurns: true,
                 ...codexThreadRuntimeParams({
-                  mcpSession: yield* readMcpSession(
+                  ...(yield* readThreadMcp(
                     threadInput.threadId ?? threadInput.providerThread.appThreadId,
-                  ),
+                  )),
                   ...(threadInput.modelSelection === undefined
                     ? {}
                     : { modelSelection: threadInput.modelSelection }),
@@ -7722,7 +7743,7 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                   threadId,
                   excludeTurns: true,
                   ...codexThreadRuntimeParams({
-                    mcpSession: yield* readMcpSession(threadInput.providerThread.appThreadId),
+                    ...(yield* readThreadMcp(threadInput.providerThread.appThreadId)),
                     modelSelection: input.modelSelection,
                     runtimePolicy: input.runtimePolicy,
                   }),
@@ -7774,7 +7795,7 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                       ? {}
                       : { lastTurnId: boundary.lastTurnId }),
                     ...codexThreadRuntimeParams({
-                      mcpSession: yield* mcpSessions.read(threadInput.targetThreadId),
+                      ...(yield* readThreadMcp(threadInput.targetThreadId)),
                       ...(threadInput.modelSelection === undefined
                         ? {}
                         : { modelSelection: threadInput.modelSelection }),
