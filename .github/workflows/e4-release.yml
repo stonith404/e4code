@@ -381,7 +381,7 @@ jobs:
       rust_target: ${{ matrix.rust_target }}
       resource_key: ${{ matrix.resource_key }}
       cli_archive: ${{ matrix.cli_archive }}
-      launch_check: ${{ matrix.launch_check || false }}
+      launch_check: false
 
   release:
     name: Publish GitHub Release
