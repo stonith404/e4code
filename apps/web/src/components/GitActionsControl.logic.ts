@@ -20,6 +20,10 @@ import {
   vcsActionLabelText,
 } from "@t3tools/client-runtime/state/vcs";
 
+import type { ThreadCheckpointSummary } from "@t3tools/client-runtime/state/thread-checkpoints";
+import { turnChanges } from "@t3tools/client-runtime/state/thread-repositories";
+import type { DiffPanelSelection } from "../diffPanelStore";
+
 export {
   requiresDefaultBranchConfirmation,
   type DefaultBranchConfirmableAction,
@@ -655,7 +659,7 @@ export type ChangesLineTotals = {
 // The Diff panel's branch comparison wins when it has file stats, so a remembered base or
 // hidden whitespace reads the same in the row as in the panel.
 export function resolveChangesTotals(
-  status: VcsStatusResult | null | undefined,
+  status: Pick<VcsStatusResult, "workingTree" | "branchChanges"> | null | undefined,
   branchPreview?: ReviewDiffPreviewSource | null,
 ): ChangesLineTotals | null {
   if (branchPreview?.files) {
@@ -695,5 +699,50 @@ export function resolveChangesTotals(
             })),
           )
         : null,
+  };
+}
+
+// Follows the diff panel's scope so the row counts what opening it shows; scopes the status snapshot cannot total fall back to branch Changes
+export function resolveChangesRowStat(
+  selection: DiffPanelSelection,
+  gitStatus: Pick<VcsStatusResult, "workingTree" | "branchChanges"> | null,
+  turns: ReadonlyArray<ThreadCheckpointSummary>,
+  branchPreview?: ReviewDiffPreviewSource | null,
+  resolve: MessageResolver = m,
+): { kind: "unstaged" | "turn" | "branch"; label: string; insertions: number; deletions: number } {
+  if (selection.kind === "unstaged") {
+    return {
+      kind: "unstaged",
+      label: resolve(msg("Uncommitted")),
+      insertions: gitStatus?.workingTree.insertions ?? 0,
+      deletions: gitStatus?.workingTree.deletions ?? 0,
+    };
+  }
+  if (selection.kind === "turn") {
+    const ordered = turns.toSorted(
+      (left, right) =>
+        right.checkpointTurnCount - left.checkpointTurnCount ||
+        right.completedAt.localeCompare(left.completedAt),
+    );
+    const turn = ordered.find((summary) => summary.runId === selection.turnId) ?? ordered[0];
+    if (turn) {
+      const totals = turnChanges({ files: turn.files, filesTotal: turn.filesTotal }).totals;
+      return {
+        kind: "turn",
+        label:
+          turn === ordered[0]
+            ? resolve(msg("Latest turn"))
+            : resolve(msg("Turn {value0}", { value0: turn.checkpointTurnCount })),
+        insertions: totals.additions,
+        deletions: totals.deletions,
+      };
+    }
+  }
+  const totals = resolveChangesTotals(gitStatus, branchPreview);
+  return {
+    kind: "branch",
+    label: resolve(msg("Changes")),
+    insertions: totals?.insertions ?? 0,
+    deletions: totals?.deletions ?? 0,
   };
 }
