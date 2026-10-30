@@ -48,3 +48,12 @@ A **Review** surface in the right panel (`+` menu, `R`, or the thread details **
 - The sidebar's **Review guide** view: a Markdown summary (with a mermaid diagram when it helps) and the changed files grouped in reading order, which the previous/next buttons then follow. It reuses the PR review guide writer and its coverage normalization on a snapshot of the local changes (a checkpoint commit in a temporary worktree), with its own prompt. Generation failures keep a short model-settings hint and expandable diagnostics, so retry stays reachable. Guides are kept under `review-guides/` in the state directory, keyed by workspace, scope and base ref (`review.getGuide`, `review.generateGuide`).
 - The thread details **Changes** row follows the diff panel's selected scope: Uncommitted uses the working-tree totals and a turn its checkpoint totals, both already on the client. A commit, a tool call or a custom base ref fall back to the branch Changes totals, since only a full diff could count them.
 - Web and desktop only; mobile only widens a type.
+
+## feat(settings): manage MCP servers for Claude and Codex
+
+Settings → MCP servers adds, edits, toggles and removes MCP servers per environment, and picks which Claude and Codex instances get each one.
+
+- `mcpServers` in server settings (`packages/contracts/src/mcpServer.ts`): stdio or Streamable HTTP. Env, header, client secret and session values go to the secret store. Patches need the providers-manage scope, since a stdio server is a host command.
+- The Claude and Codex adapters add the servers beside `t3-code` when a session starts. Claude's T3 instructions now key on the `t3-code` entry, not on any MCP server being present.
+- OAuth: `McpServers` discovers metadata (RFC 9728/8414), runs PKCE through `/oauth/mcp-servers/callback`, keeps the session in `oauthSession` and refreshes it. Without a client ID it signs in as the client ID metadata document committed at `oauth/mcp-client.json` and served from jsDelivr when the server accepts one and the redirect is loopback, and otherwise registers a client per sign-in (RFC 7591). Providers reach OAuth servers through `/mcp-servers/<name>` with their T3 session credential, and the proxy adds the access token.
+- Web only; the mobile app has no MCP server screen.
