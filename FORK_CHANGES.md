@@ -44,3 +44,7 @@ Reviews a thread's local changes from the diff panel.
 - Per-file **Reviewed** and **Check later** marks, stored client-side per thread and scope (`t3code:review-marks:v1`). A reviewed file whose diff blobs change reads as **Changed**. Shown in file headers, the file tree and the panel header. In these scopes only reviewed files start collapsed, instead of following the "collapse files" setting; a manual fold lasts until the file's mark or review state changes.
 - A **Review guide** view: a Markdown summary (with a mermaid diagram when it helps) and the changed files grouped in reading order, each expandable to its diff. It reuses the PR review guide writer and its coverage normalization on a snapshot of the local changes (a checkpoint commit in a temporary worktree), with its own prompt. Guides are kept under `review-guides/` in the state directory, keyed by workspace, scope and base ref (`review.getGuide`, `review.generateGuide`).
 - Web and desktop only; mobile only widens a type.
+
+## fix(ci): launch check keeps its fixture threads out of the Settled shelf
+
+The release launch check seeds a fixture database whose threads date from 2026-10-27. Three days later the server's default auto-settle moved them into the collapsed Settled shelf, so the check never found the seeded thread and every desktop build failed to publish. The seeded T3 home now disables auto-settle in its `settings.json`. Upstream has the same time bomb.
