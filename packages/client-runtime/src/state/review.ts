@@ -102,5 +102,14 @@ export function createReviewEnvironmentAtoms<R, E>(
           ]),
       },
     }),
+    guide: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:review:guide",
+      tag: WS_METHODS.reviewGetGuide,
+      staleTimeMs: 5_000,
+    }),
+    generateGuide: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:review:generate-guide",
+      tag: WS_METHODS.reviewGenerateGuide,
+    }),
   };
 }

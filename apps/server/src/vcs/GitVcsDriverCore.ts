@@ -3115,6 +3115,79 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     return { baseRef, insertions, deletions };
   }, Effect.scoped);
 
+  const hashReviewDiff = (cwd: string, diff: string, files: ReadonlyArray<ReviewDiffFileStat>) =>
+    crypto.digest("SHA-256", new TextEncoder().encode(JSON.stringify([diff, files]))).pipe(
+      Effect.map(Hex.encode),
+      Effect.mapError(
+        (cause) =>
+          new GitCommandError({
+            operation: "GitVcsDriver.getReviewDiffPreview.hash",
+            command: "crypto.digest SHA-256",
+            cwd,
+            detail: "Failed to hash review diff.",
+            cause,
+          }),
+      ),
+    );
+
+  // Commits only: the upstream when the branch has one, otherwise the same base Changes uses.
+  const getUnpushedReviewDiffPreview = Effect.fn("getUnpushedReviewDiffPreview")(function* (
+    input: ReviewDiffPreviewInput,
+    cwd: string,
+    currentBranch: string | null,
+    pathArgs: ReadonlyArray<string>,
+    patchLimit: number,
+  ) {
+    const upstreamRef = yield* readCurrentUpstreamRef(cwd);
+    const { baseRef, mergeBase } = yield* resolveReviewMergeBase(
+      cwd,
+      currentBranch,
+      upstreamRef ?? undefined,
+    );
+    const diffArgs = [
+      ...REVIEW_DIFF_ARGS,
+      "--minimal",
+      ...(input.ignoreWhitespace ? ["--ignore-all-space"] : []),
+    ];
+    const range = [mergeBase, "HEAD", "--", ...pathArgs];
+    const files =
+      mergeBase === "HEAD"
+        ? []
+        : parseReviewNumstat(
+            yield* runGitStdoutWithOptions(
+              "GitVcsDriver.getReviewDiffPreview.unpushedStat",
+              cwd,
+              [...diffArgs, "--numstat", "-z", ...range],
+              { maxOutputBytes: REVIEW_METADATA_MAX_OUTPUT_BYTES },
+            ),
+          );
+    const patch =
+      files.length === 0
+        ? { stdout: "", stdoutTruncated: false }
+        : yield* executeGit(
+            "GitVcsDriver.getReviewDiffPreview.unpushedPatch",
+            cwd,
+            [...diffArgs, "--patch", ...range],
+            { maxOutputBytes: patchLimit, appendTruncationMarker: true },
+          );
+    const source: ReviewDiffPreviewSource = {
+      id: "unpushed",
+      kind: "unpushed",
+      title: upstreamRef
+        ? `Unpushed to ${upstreamRef}`
+        : baseRef
+          ? `Unpushed (vs ${baseRef})`
+          : "Unpushed",
+      baseRef,
+      headRef: currentBranch ?? "HEAD",
+      diff: patch.stdout,
+      files,
+      diffHash: yield* hashReviewDiff(cwd, patch.stdout, files),
+      truncated: patch.stdoutTruncated,
+    };
+    return { cwd: input.cwd, generatedAt: yield* DateTime.now, sources: [source] };
+  });
+
   const getReviewDiffPreview = Effect.fn("getReviewDiffPreview")(function* (
     input: ReviewDiffPreviewInput,
   ) {
@@ -3141,6 +3214,15 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     }
 
     const cwd = repository.worktreeRoot;
+    if (input.unpushed === true || input.file?.sourceKind === "unpushed") {
+      return yield* getUnpushedReviewDiffPreview(
+        input,
+        cwd,
+        repository.currentBranch,
+        pathArgs,
+        patchLimit,
+      );
+    }
     const dirtyRef = input.file?.sourceKind === "branch-range" ? null : "HEAD";
     const review =
       input.file?.sourceKind === "working-tree"
@@ -3220,23 +3302,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     const baseFiles = baseResult.files;
     const dirtyDiff = dirtyTrackedResult.stdout;
     const baseDiff = baseResult.stdout;
-    const hashDiff = (diff: string, files: ReadonlyArray<ReviewDiffFileStat>) =>
-      crypto.digest("SHA-256", new TextEncoder().encode(JSON.stringify([diff, files]))).pipe(
-        Effect.map(Hex.encode),
-        Effect.mapError(
-          (cause) =>
-            new GitCommandError({
-              operation: "GitVcsDriver.getReviewDiffPreview.hash",
-              command: "crypto.digest SHA-256",
-              cwd,
-              detail: "Failed to hash review diff.",
-              cause,
-            }),
-        ),
-      );
     const [dirtyDiffHash, baseDiffHash] = yield* Effect.all([
-      hashDiff(dirtyDiff, dirtyFiles ?? []),
-      hashDiff(baseDiff, baseFiles ?? []),
+      hashReviewDiff(cwd, dirtyDiff, dirtyFiles ?? []),
+      hashReviewDiff(cwd, baseDiff, baseFiles ?? []),
     ]);
 
     const sources: ReviewDiffPreviewSource[] = [
@@ -3396,7 +3464,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           : readReviewFileAtRevision(input, oldRevision, input.oldPath),
         input.changeType === "deleted"
           ? Effect.succeed("")
-          : readWorkingTreeReviewFile(input, repositoryRoot),
+          : input.sourceKind === "unpushed"
+            ? readReviewFileAtRevision(input, "HEAD", input.newPath)
+            : readWorkingTreeReviewFile(input, repositoryRoot),
       ],
       { concurrency: 2 },
     );

@@ -1989,6 +1989,38 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
+    it.effect("limits the unpushed source to commits ahead of the upstream", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const remote = yield* makeTmpDir("git-vcs-driver-remote-");
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        yield* git(remote, ["init", "--bare"]);
+        yield* git(cwd, ["remote", "add", "origin", remote]);
+        yield* git(cwd, ["push", "-u", "origin", initialBranch]);
+        yield* writeTextFile(cwd, "README.md", "# committed\n");
+        yield* git(cwd, ["commit", "-am", "unpushed"]);
+        yield* writeTextFile(cwd, "README.md", "# committed\nuncommitted\n");
+        yield* writeTextFile(cwd, "untracked.txt", "new\n");
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+
+        const preview = yield* driver.getReviewDiffPreview({ cwd, unpushed: true });
+        assert.lengthOf(preview.sources, 1);
+        const source = preview.sources[0]!;
+        assert.strictEqual(source.kind, "unpushed");
+        assert.strictEqual(source.baseRef, `origin/${initialBranch}`);
+        assert.deepStrictEqual(source.files, [
+          { path: "README.md", previousPath: null, additions: 1, deletions: 1 },
+        ]);
+        assert.notInclude(source.diff, "uncommitted");
+
+        const contents = yield* driver.getReviewDiffFileContents(
+          makeReviewDiffFileContentsInput(cwd, { sourceKind: "unpushed", baseRef: source.baseRef }),
+        );
+        assert.strictEqual(contents.oldContents, "# test\n");
+        assert.strictEqual(contents.newContents, "# committed\n");
+      }),
+    );
+
     it.effect("reads a base ref that looks like an option as a revision", () =>
       Effect.gen(function* () {
         const cwd = yield* makeTmpDir();

@@ -1,6 +1,7 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
 import type { FileDiffContentsLoader, FileDiffMetadata } from "@pierre/diffs";
+import type { FileTreeRowDecoration } from "@pierre/trees";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -12,10 +13,12 @@ import {
   CheckIcon,
   ChevronDownIcon,
   Columns2Icon,
+  FlagIcon,
   FlaskConicalOffIcon,
   FolderTreeIcon,
   PilcrowIcon,
   Rows3Icon,
+  SparklesIcon,
   TextWrapIcon,
 } from "lucide-react";
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide";
@@ -102,11 +105,39 @@ import { createGitDiffFileContentsLoader } from "../lib/diffFileContents";
 import { useReviewFilePatches } from "./diffs/useReviewFilePatches";
 import { DiffFileLoadingBoundary } from "./diffs/DiffFileLoadingBoundary";
 import { DiffFileStatus } from "./diffs/DiffFileStatus";
+import { DiffFileReviewControl } from "./diffs/DiffFileReviewControl";
+import { LocalReviewGuide } from "./diffs/LocalReviewGuide";
+import {
+  deriveFileReviewState,
+  fileReviewVersion,
+  dropFoldFlips,
+  foldedFileKeys,
+  foldFlips,
+  type FileReviewState,
+  type ReviewMark,
+  useReviewMarksStore,
+  useScopeReviewMarks,
+} from "./diffs/reviewMarks";
 import { useThreadRouteRef } from "../hooks/useThreadRouteTarget";
 
 type DiffThemeType = "light" | "dark";
 const AUTOMATIC_BASE_REF = "__automatic_base_ref__";
 const DIFF_FILE_TREE_STORAGE_KEY = "t3code.diffFileTreeOpen";
+const GIT_SCOPE_LABELS = {
+  branch: "Changes",
+  unstaged: "Uncommitted",
+  unpushed: "Unpushed",
+} as const;
+const GIT_SCOPE_SOURCE_KINDS = {
+  branch: "branch-range",
+  unstaged: "working-tree",
+  unpushed: "unpushed",
+} as const;
+const REVIEW_TREE_DECORATIONS = {
+  reviewed: { icon: "t3-tree-icon-reviewed", title: "Reviewed" },
+  flagged: { icon: "t3-tree-icon-flagged", title: "Check later" },
+  changed: { icon: "t3-tree-icon-changed", title: "Changed since reviewed" },
+} as const satisfies Record<Exclude<FileReviewState, "unreviewed">, FileTreeRowDecoration>;
 const fileEntryCache = new WeakMap<
   FileDiffMetadata,
   { fileDiff: FileDiffMetadata; fileKey: string; fileVersion: number }
@@ -224,6 +255,7 @@ export default function DiffPanel({
   const [hideTestFiles, setHideTestFiles] = useHideTestFiles();
   const [baseRefQuery, setBaseRefQuery] = useState("");
   const [codeViewRevision, setCodeViewRevision] = useState(0);
+  const [reviewView, setReviewView] = useState<"files" | "guide">("files");
 
   const routeThreadRef = useThreadRouteRef();
   const activeThreadId = routeThreadRef?.threadId ?? null;
@@ -264,7 +296,10 @@ export default function DiffPanel({
     selectThreadDiffPanelSelection(state.byThreadKey, routeThreadRef),
   );
   const toolCallSelection = diffSelection.kind === "tool-call" ? diffSelection : null;
-  const isGitSelection = diffSelection.kind === "branch" || diffSelection.kind === "unstaged";
+  const isGitSelection =
+    diffSelection.kind === "branch" ||
+    diffSelection.kind === "unstaged" ||
+    diffSelection.kind === "unpushed";
   const toolCallItems = useQuietThreadVisibleTurnItems(toolCallSelection ? routeThreadRef : null);
   const toolCallDetail = useTurnItemDetail(
     toolCallSelection && routeThreadRef
@@ -294,7 +329,10 @@ export default function DiffPanel({
   }, [diffSelection, orderedTurnDiffSummaries, routeThreadRef]);
 
   const selectedRunId = diffSelection.kind === "turn" ? diffSelection.turnId : null;
-  const selectedGitScope = diffSelection.kind === "unstaged" ? "unstaged" : "branch";
+  const selectedGitScope =
+    diffSelection.kind === "unstaged" || diffSelection.kind === "unpushed"
+      ? diffSelection.kind
+      : "branch";
   const selectedBaseRef = diffSelection.kind === "branch" ? diffSelection.baseRef : null;
   const selectedFilePath = diffSelection.kind === "turn" ? diffSelection.filePath : null;
   const selectedFileRevealRequestId =
@@ -309,9 +347,7 @@ export default function DiffPanel({
   const selectedScopeLabel = toolCallSelection
     ? "Tool call"
     : selectedRunId === null
-      ? selectedGitScope === "unstaged"
-        ? "Uncommitted"
-        : "Changes"
+      ? GIT_SCOPE_LABELS[selectedGitScope]
       : selectedTurn?.runId === latestTurn?.runId
         ? "Latest turn"
         : `Turn ${selectedCheckpointTurnCount ?? "?"}`;
@@ -328,9 +364,7 @@ export default function DiffPanel({
     ? "Tool call"
     : selectedTurn
       ? `Turn ${selectedCheckpointTurnCount ?? "?"}`
-      : selectedGitScope === "unstaged"
-        ? "Uncommitted"
-        : "Changes";
+      : GIT_SCOPE_LABELS[selectedGitScope];
   const selectedCheckpointRange =
     typeof selectedCheckpointTurnCount === "number"
       ? {
@@ -355,6 +389,7 @@ export default function DiffPanel({
           cwd: activeCwd,
           ...(selectedBaseRef ? { baseRef: selectedBaseRef } : {}),
           ignoreWhitespace: diffIgnoreWhitespace,
+          ...(selectedGitScope === "unpushed" ? { unpushed: true } : {}),
         }
       : undefined;
   const canRefreshGitDiff =
@@ -377,7 +412,7 @@ export default function DiffPanel({
     : null;
 
   const selectedGitSource = branchDiffPreview.data?.sources.find(
-    (source) => source.kind === (selectedGitScope === "unstaged" ? "working-tree" : "branch-range"),
+    (source) => source.kind === GIT_SCOPE_SOURCE_KINDS[selectedGitScope],
   );
   const refreshPreviewQuery = branchDiffPreview.refresh;
   const refreshDiffFromUserAction = refreshPreviewQuery;
@@ -553,21 +588,93 @@ export default function DiffPanel({
   };
   const shownFileEntries = renderableFileEntries.filter(({ fileDiff }) => isFileShown(fileDiff));
   const shownFileKeys = shownFileEntries.map((file) => file.fileKey);
+  const reviewScopeKey = isGitSelection ? collapseScopeKey : null;
+  const reviewMarks = useScopeReviewMarks(reviewScopeKey);
+  const loadedFileDiffs = renderableFiles.filter(
+    (fileDiff) => fileDiff.cacheKey?.endsWith(":pending") !== true,
+  );
+  const reviewStates = new Map<string, FileReviewState>(
+    reviewScopeKey === null
+      ? []
+      : renderableFiles.map((fileDiff) => {
+          const path = resolveFileDiffPath(fileDiff);
+          const pending = fileDiff.cacheKey?.endsWith(":pending") === true;
+          return [
+            path,
+            deriveFileReviewState(reviewMarks[path], pending ? null : fileReviewVersion(fileDiff)),
+          ];
+        }),
+  );
+  const reviewStateCounts = { reviewed: 0, flagged: 0 };
+  const reviewTreeDecorations = new Map<string, FileTreeRowDecoration>();
+  for (const [path, state] of reviewStates) {
+    if (state === "reviewed" || state === "flagged") reviewStateCounts[state] += 1;
+    if (state !== "unreviewed") reviewTreeDecorations.set(path, REVIEW_TREE_DECORATIONS[state]);
+  }
+  const reviewedFileKeys = new Set(
+    renderableFileEntries.flatMap(({ fileDiff, fileKey }) =>
+      reviewStates.get(resolveFileDiffPath(fileDiff)) === "reviewed" ? [fileKey] : [],
+    ),
+  );
   const defaultCollapsedDiffFileKeys = settings.diffFilesCollapsed
     ? new Set(diffFileKeys)
     : EMPTY_COLLAPSED_DIFF_FILE_KEYS;
   const storedCollapsedDiffFileKeys = useDiffPanelSessionStore((state) =>
     collapseScopeKey ? state.collapsedFileKeysByScopeKey[collapseScopeKey] : undefined,
   );
-  const collapsedDiffFileKeys = storedCollapsedDiffFileKeys ?? defaultCollapsedDiffFileKeys;
+  // In review scopes the session store keeps fold flips against the review default, not folds.
+  const collapsedDiffFileKeys =
+    reviewScopeKey === null
+      ? (storedCollapsedDiffFileKeys ?? defaultCollapsedDiffFileKeys)
+      : foldedFileKeys(diffFileKeys, reviewedFileKeys, storedCollapsedDiffFileKeys);
   const updateCollapsedDiffFiles = (
     update: (current: ReadonlySet<string>) => ReadonlySet<string>,
   ) => {
     if (!collapseScopeKey) return;
+    const sessionStore = useDiffPanelSessionStore.getState();
+    if (reviewScopeKey === null) {
+      sessionStore.updateCollapsedFileKeys(collapseScopeKey, defaultCollapsedDiffFileKeys, update);
+      return;
+    }
+    sessionStore.updateCollapsedFileKeys(
+      collapseScopeKey,
+      EMPTY_COLLAPSED_DIFF_FILE_KEYS,
+      (flips) => {
+        const current = foldedFileKeys(diffFileKeys, reviewedFileKeys, flips);
+        const next = update(current);
+        return next === current ? flips : foldFlips(diffFileKeys, reviewedFileKeys, next);
+      },
+    );
+  };
+  const setReviewMarks = (
+    fileDiffs: ReadonlyArray<FileDiffMetadata>,
+    state: ReviewMark["state"] | null,
+  ) => {
+    if (!reviewScopeKey) return;
+    useReviewMarksStore
+      .getState()
+      .setMarks(
+        reviewScopeKey,
+        Object.fromEntries(
+          fileDiffs.map((fileDiff) => [
+            resolveFileDiffPath(fileDiff),
+            state === null ? null : { state, version: fileReviewVersion(fileDiff) },
+          ]),
+        ),
+      );
+    const fileKeys = fileDiffs.map((fileDiff) => getCachedFileEntry(fileDiff).fileKey);
     useDiffPanelSessionStore
       .getState()
-      .updateCollapsedFileKeys(collapseScopeKey, defaultCollapsedDiffFileKeys, update);
+      .updateCollapsedFileKeys(reviewScopeKey, EMPTY_COLLAPSED_DIFF_FILE_KEYS, (flips) =>
+        dropFoldFlips(flips, fileKeys),
+      );
   };
+  const setFileReviewed = useStableCallback((fileDiff: FileDiffMetadata, reviewed: boolean) =>
+    setReviewMarks([fileDiff], reviewed ? "reviewed" : null),
+  );
+  const setFileFlagged = useStableCallback((fileDiff: FileDiffMetadata, flagged: boolean) =>
+    setReviewMarks([fileDiff], flagged ? "flagged" : null),
+  );
   const renderLoadingBoundary = () =>
     settledFileCount < renderableFiles.length ? (
       <DiffFileLoadingBoundary
@@ -684,7 +791,7 @@ export default function DiffPanel({
     if (!routeThreadRef) return;
     useDiffPanelStore.getState().selectTurn(routeThreadRef, runId);
   };
-  const selectGitScope = (scope: "branch" | "unstaged") => {
+  const selectGitScope = (scope: "branch" | "unstaged" | "unpushed") => {
     if (!routeThreadRef) return;
     useDiffPanelStore.getState().selectGitScope(routeThreadRef, scope);
   };
@@ -701,7 +808,7 @@ export default function DiffPanel({
         ? "latest"
         : selectedTurnValue;
   const selectScopeValue = (value: string) => {
-    if (value === "unstaged" || value === "branch") {
+    if (value === "unstaged" || value === "branch" || value === "unpushed") {
       selectGitScope(value);
     } else if (value === "latest") {
       if (latestTurn) selectTurn(latestTurn.runId);
@@ -731,6 +838,9 @@ export default function DiffPanel({
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="unstaged" closeOnClick>
                 <span>Uncommitted</span>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="unpushed" closeOnClick>
+                <span>Unpushed</span>
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="latest" closeOnClick>
                 <span>Latest turn</span>
@@ -895,6 +1005,30 @@ export default function DiffPanel({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+        {reviewStates.size > 0 ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="mr-1 flex items-center gap-1.5 text-2xs text-muted-foreground tabular-nums @max-[28rem]/diff-header:hidden" />
+              }
+            >
+              <span className="flex items-center gap-0.5">
+                <CheckIcon aria-hidden className="size-3" />
+                {reviewStateCounts.reviewed}/{reviewStates.size}
+              </span>
+              {reviewStateCounts.flagged > 0 ? (
+                <span className="flex items-center gap-0.5 text-warning-foreground">
+                  <FlagIcon aria-hidden className="size-3" />
+                  {reviewStateCounts.flagged}
+                </span>
+              ) : null}
+            </TooltipTrigger>
+            <TooltipPopup side="top">
+              {`${reviewStateCounts.reviewed} of ${reviewStates.size} files reviewed`}
+              {reviewStateCounts.flagged > 0 ? `, ${reviewStateCounts.flagged} to check later` : ""}
+            </TooltipPopup>
+          </Tooltip>
+        ) : null}
         {codeViewFiles.length > 0 || (isGitSelection && selectedGitSource?.files?.length) ? (
           <DiffStatLabel
             additions={diffLineStat.additions}
@@ -902,6 +1036,26 @@ export default function DiffPanel({
             className="mr-1 text-2xs"
             layout="inline"
           />
+        ) : null}
+        {isGitSelection ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Toggle
+                  aria-label={reviewView === "guide" ? "Show files" : "Show review guide"}
+                  variant="ghost"
+                  size="sm"
+                  pressed={reviewView === "guide"}
+                  onPressedChange={(pressed) => setReviewView(pressed ? "guide" : "files")}
+                />
+              }
+            >
+              <SparklesIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipPopup side="top">
+              {reviewView === "guide" ? "Show files" : "Review guide"}
+            </TooltipPopup>
+          </Tooltip>
         ) : null}
         {canRefreshGitDiff && (
           <Tooltip>
@@ -1095,7 +1249,45 @@ export default function DiffPanel({
                 <p className="mb-2 text-2xs text-error/80">{selectedPatchError}</p>
               </div>
             )}
-            {!renderablePatch && toolCallPreview && toolCallPreview.content.length > 0 ? (
+            {isGitSelection &&
+            reviewView === "guide" &&
+            activeCwd &&
+            activeProjectId &&
+            reviewScopeKey ? (
+              <LocalReviewGuide
+                environmentId={activeThread.environmentId}
+                projectId={activeProjectId}
+                cwd={activeCwd}
+                sourceKind={GIT_SCOPE_SOURCE_KINDS[selectedGitScope]}
+                baseRef={selectedBaseRef}
+                ignoreWhitespace={diffIgnoreWhitespace}
+                diffHash={selectedGitSource?.diffHash ?? null}
+                reviewScopeKey={reviewScopeKey}
+                files={
+                  new Map(
+                    loadedFileDiffs.map((fileDiff) => [resolveFileDiffPath(fileDiff), fileDiff]),
+                  )
+                }
+                loadDiffFiles={loadDiffFiles}
+                isCollapsed={(fileDiff) =>
+                  collapsedDiffFileKeys.has(getCachedFileEntry(fileDiff).fileKey)
+                }
+                onToggleCollapsed={(fileDiff) =>
+                  toggleDiffFileCollapsed(getCachedFileEntry(fileDiff).fileKey)
+                }
+                onWantPaths={(paths) => {
+                  if (!lazySource) return;
+                  for (const path of paths) {
+                    const index = renderableFiles.findIndex(
+                      (fileDiff) => resolveFileDiffPath(fileDiff) === path,
+                    );
+                    if (index >= settledFileCount) requestFile(index);
+                  }
+                }}
+                onReviewedChange={setFileReviewed}
+                onFlaggedChange={setFileFlagged}
+              />
+            ) : !renderablePatch && toolCallPreview && toolCallPreview.content.length > 0 ? (
               <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3 text-xs">
                 <p className="text-muted-foreground">
                   The provider recorded file content without a diff.
@@ -1124,7 +1316,9 @@ export default function DiffPanel({
                         ? "Loading checkpoint diff..."
                         : selectedGitScope === "unstaged"
                           ? "Loading uncommitted changes..."
-                          : "Loading changes..."
+                          : selectedGitScope === "unpushed"
+                            ? "Loading unpushed commits..."
+                            : "Loading changes..."
                   }
                 />
               ) : (
@@ -1145,7 +1339,11 @@ export default function DiffPanel({
                     for (const node of composedPath) {
                       if (!(node instanceof HTMLElement)) continue;
                       // Header buttons own their clicks; bubbling a chevron click would toggle twice.
-                      if (node instanceof HTMLButtonElement || node instanceof HTMLAnchorElement) {
+                      if (
+                        node instanceof HTMLButtonElement ||
+                        node instanceof HTMLAnchorElement ||
+                        node.hasAttribute("data-review-control")
+                      ) {
                         return;
                       }
                     }
@@ -1217,14 +1415,33 @@ export default function DiffPanel({
                       ? {
                           unsafeCSSExtra:
                             "[data-additions-count], [data-deletions-count] { display: none; }",
+                        }
+                      : {})}
+                    {...(lazySource || reviewScopeKey
+                      ? {
                           renderHeaderMetadata: (fileDiff: FileDiffMetadata) => {
-                            const stat = fileStats.get(resolveFileDiffPath(fileDiff));
-                            return stat ? (
-                              <DiffStatLabel
-                                additions={stat.additions}
-                                deletions={stat.deletions}
-                              />
-                            ) : null;
+                            const stat = lazySource
+                              ? fileStats.get(resolveFileDiffPath(fileDiff))
+                              : undefined;
+                            const pending = fileDiff.cacheKey?.endsWith(":pending") === true;
+                            return (
+                              <>
+                                {stat ? (
+                                  <DiffStatLabel
+                                    additions={stat.additions}
+                                    deletions={stat.deletions}
+                                  />
+                                ) : null}
+                                {reviewScopeKey && !pending ? (
+                                  <DiffFileReviewControl
+                                    scopeKey={reviewScopeKey}
+                                    fileDiff={fileDiff}
+                                    onReviewedChange={setFileReviewed}
+                                    onFlaggedChange={setFileFlagged}
+                                  />
+                                ) : null}
+                              </>
+                            );
                           },
                         }
                       : {})}
@@ -1259,6 +1476,7 @@ export default function DiffPanel({
                     <DiffFileTree
                       ariaLabel={`${reviewSectionTitle} files`}
                       entries={fileTreeEntries}
+                      decorations={reviewTreeDecorations}
                       selectedPath={selectedFilePath}
                       revealRequestId={selectedFileRevealRequestId}
                       onSelectFile={revealDiffFile}

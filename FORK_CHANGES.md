@@ -35,3 +35,12 @@ Lets the in-app updater install new builds on Macs that trust the fork's certifi
 - When `CSC_LINK` is set but the Apple notarization secrets are not, the desktop job passes the identity as `T3CODE_DESKTOP_MAC_SIGN_IDENTITY`. `build-desktop-artifact.ts` then sets `mac.identity` with hardened runtime and notarization off, instead of upstream's `--signed` path that needs a provisioning profile.
 - Gatekeeper still shows the unverified-developer dialog on first launch, since only notarized Developer ID builds skip it.
 - Each Mac that should receive in-app updates trusts the certificate once: `security add-trusted-cert -r trustRoot -p codeSign -k ~/Library/Keychains/login.keychain-db e4code-signing.cert.pem`. The first switch from an ad hoc build to a signed one is a manual DMG install.
+
+## feat(review): review local changes with marks and guides
+
+Reviews a thread's local changes from the diff panel.
+
+- An **Unpushed** scope next to Changes and Uncommitted: commits ahead of the upstream, or of the base branch when there is none (`review.getDiffPreview` with `unpushed: true`).
+- Per-file **Reviewed** and **Check later** marks, stored client-side per thread and scope (`t3code:review-marks:v1`). A reviewed file whose diff blobs change reads as **Changed**. Shown in file headers, the file tree and the panel header. In these scopes only reviewed files start collapsed, instead of following the "collapse files" setting; a manual fold lasts until the file's mark or review state changes.
+- A **Review guide** view: a Markdown summary (with a mermaid diagram when it helps) and the changed files grouped in reading order, each expandable to its diff. It reuses the PR review guide writer and its coverage normalization on a snapshot of the local changes (a checkpoint commit in a temporary worktree), with its own prompt. Guides are kept under `review-guides/` in the state directory, keyed by workspace, scope and base ref (`review.getGuide`, `review.generateGuide`).
+- Web and desktop only; mobile only widens a type.

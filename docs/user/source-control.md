@@ -10,6 +10,25 @@ rebases, the files Git brought in are left out. A file stays in the list when th
 committed it, or fixed a conflict in it. Use the branch comparison to review everything that changed
 against your base branch. Restore still returns the complete saved workspace.
 
+## Review local changes
+
+Open the diff panel (`Cmd/Ctrl+D`) and pick what to review: **Changes** (everything on the branch
+against its base, committed or not), **Uncommitted**, or **Unpushed** (commits not yet on the
+branch's upstream, or on the base branch when it has none).
+
+Files you have not reviewed yet are expanded. Tick **Reviewed** on a file once you have read it and
+it collapses, or flag it to **check later**. The file tree and the panel header show your progress.
+If a reviewed file changes afterwards, for example because the agent edits it again, it is marked
+**Changed** and expands until you review it again. Marks are kept in this browser or app,
+separately for each thread and comparison.
+
+Choose **Review guide** (the sparkles button) to have an agent summarize the changes, with a diagram
+when one helps, and group the changed files in a good order to read them. Expand a file to read its
+diff and mark it as you go. The guide is written in a separate copy of your changes, so you can keep
+working; it takes a few minutes. It uses the review guide model from Settings →
+Source control when review guides are on, and the source control writer model otherwise; only
+Claude and Codex can write guides. When the changes move on, the guide offers to rewrite itself.
+
 ## Connect an account
 
 Install Git and configure authentication on the machine running your T3 Code server. For a remote
