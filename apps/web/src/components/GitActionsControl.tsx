@@ -31,6 +31,7 @@ import {
   CloudDownloadIcon,
   CloudUploadIcon,
   FileDiffIcon,
+  FileSearchIcon,
   GitBranchPlusIcon,
   GitCommitIcon,
   InfoIcon,
@@ -52,6 +53,7 @@ import {
   type GitQuickAction,
   type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
+  resolveChangesRowStat,
   resolveDefaultBranchActionDialogCopy,
   resolveFeatureBranchUnavailableReason,
   resolveGitActionProgressPresentation,
@@ -89,7 +91,12 @@ import {
   useVcsInitAction,
   useVcsPullAction,
 } from "../state/sourceControlActions";
-import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities";
+import {
+  useThreadCheckpointSummaries,
+  useQuietThreadProjection,
+  useQuietThreadShell,
+} from "~/state/entities";
+import { selectThreadDiffPanelSelection, useDiffPanelStore } from "~/diffPanelStore";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
@@ -120,6 +127,7 @@ interface GitActionsControlProps {
   showActions?: boolean;
   showChanges?: boolean;
   onOpenChanges?: () => void;
+  onOpenReview?: () => void;
 }
 
 interface PendingDefaultBranchAction {
@@ -931,6 +939,7 @@ export default function GitActionsControl({
   showActions = true,
   showChanges = true,
   onOpenChanges,
+  onOpenReview,
 }: GitActionsControlProps) {
   const panelAnchorRef = useRef<HTMLDivElement | null>(null);
   const updateThreadMetadata = useAtomCommand(
@@ -1049,6 +1058,17 @@ export default function GitActionsControl({
   const hasPrimaryRemote = gitStatus?.hasPrimaryRemote ?? false;
   const gitStatusForActions = gitStatus;
   const changesTotals = gitStatusForActions?.branchChanges ?? gitStatusForActions?.workingTree;
+  const diffSelection = useDiffPanelStore((state) =>
+    selectThreadDiffPanelSelection(state.byThreadKey, activeThreadRef),
+  );
+  const turnSummaries = useThreadCheckpointSummaries(
+    diffSelection.kind === "turn" ? activeThreadRef : null,
+  );
+  const changesRowStat = resolveChangesRowStat(
+    diffSelection,
+    gitStatusForActions ?? null,
+    turnSummaries,
+  );
 
   const allFiles = gitStatusForActions?.workingTree.files ?? [];
   // Changed-file paths are repository-relative, so they must resolve against
@@ -1632,25 +1652,39 @@ export default function GitActionsControl({
           onClick={onOpenChanges}
         >
           <FileDiffIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
-          <span className={cn("flex-1 text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>Changes</span>
+          <span className={cn("flex-1 text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>
+            {changesRowStat.label}
+          </span>
           <span className="flex items-center gap-1.5 font-mono text-xs tabular-nums">
             <span
               className={
-                changesTotals?.insertions
+                changesRowStat.insertions
                   ? "text-diff-addition-foreground"
                   : "text-muted-foreground"
               }
             >
-              +{formatDiffCount(changesTotals?.insertions ?? 0)}
+              +{formatDiffCount(changesRowStat.insertions)}
             </span>
             <span
               className={
-                changesTotals?.deletions ? "text-diff-deletion-foreground" : "text-muted-foreground"
+                changesRowStat.deletions ? "text-diff-deletion-foreground" : "text-muted-foreground"
               }
             >
-              -{formatDiffCount(changesTotals?.deletions ?? 0)}
+              -{formatDiffCount(changesRowStat.deletions)}
             </span>
           </span>
+        </ThreadDetailsControl>
+      ) : null}
+      {onOpenReview && isRepo && !quietEmptyDraft ? (
+        <ThreadDetailsControl
+          type="button"
+          variant="ghost"
+          size="sm"
+          part="row"
+          onClick={onOpenReview}
+        >
+          <FileSearchIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} aria-hidden />
+          <span className={cn("flex-1 text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>Review</span>
         </ThreadDetailsControl>
       ) : null}
 
