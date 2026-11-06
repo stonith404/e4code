@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
+import { build } from "esbuild";
 
 import { findEsmImportsOfExternalPackages } from "./cli-executable-imports.ts";
 
@@ -216,6 +217,22 @@ var x = 1;
 });
 
 describe("findEsmImportsOfExternalPackages", () => {
+  it("loads Clawdmeter Bluetooth without file-backed ESM imports in the executable", async () => {
+    const bundle = await build({
+      entryPoints: [
+        NodeURL.fileURLToPath(
+          new URL("../../apps/server/src/clawdmeter/ClawdmeterLink.ts", import.meta.url),
+        ),
+      ],
+      bundle: true,
+      packages: "external",
+      platform: "node",
+      format: "esm",
+      write: false,
+    });
+    assert.deepStrictEqual(findEsmImportsOfExternalPackages(bundle.outputFiles[0]!.text), []);
+  });
+
   it("flags static and dynamic imports of file-backed packages", () => {
     const source = [
       'import { FileFinder } from "@ff-labs/fff-node";',

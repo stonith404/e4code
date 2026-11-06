@@ -702,6 +702,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "clawdmeter",
+    title: "Clawdmeter",
+    to: "/settings/general",
+    searchTerms: ["desk display device bluetooth esp32 status tiles"],
+  },
+  {
     id: "time-format",
     title: msg("Time format"),
     to: "/settings/general",
