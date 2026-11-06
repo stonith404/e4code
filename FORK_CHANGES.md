@@ -64,3 +64,14 @@ Settings → MCP servers adds, edits, toggles and removes MCP servers per enviro
 - OAuth: `McpServers` discovers metadata (RFC 9728/8414), runs PKCE through `/oauth/mcp-servers/callback`, keeps the session in `oauthSession` and refreshes it. Without a client ID it signs in as the client ID metadata document at `https://e4.elias.li/mcp-client.json` when the server accepts one and the redirect is loopback, and otherwise registers a client per sign-in (RFC 7591). Providers reach OAuth servers through `/mcp-servers/<name>` with their T3 session credential, and the proxy adds the access token.
 - With several environments in the settings scope, `McpServers` merges their lists by name and writes each change to every environment. `draftForEnvironment` drops saved secrets an environment does not hold, and sign-in stays per environment.
 - Web only; the mobile app has no MCP server screen.
+
+## feat(settings): show threads on a Clawdmeter desk display
+
+Settings → General → **Clawdmeter** shows the environment's threads on a [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) ESP32 display paired with its computer over Bluetooth, with no companion app.
+
+- `clawdmeterEnabled` in server settings (default off). `ClawdmeterService` follows it, so the server only loads `@stoprocent/noble` and touches Bluetooth while it is on.
+- `ClawdmeterLink` scans for the board's service, connects, writes JSON to its RX characteristic with response, and follows its TX (`dismiss`) and REQ (send everything again) notifications. It reconnects every 10 s while the board is away.
+- `ClawdmeterDisplay` turns the thread list into the firmware's sessions-only payload: up to six `ss` tiles, with states from `projectThreadAwarenessV2` (needs you, working, done for a minute, then idle until settled), `e`/`es` turn events, `m`/`x` alerts for pending requests and failed runs, and an `rp` heartbeat every minute.
+- Bluetooth bindings load on demand through `createRequire`, so standalone CLI builds can resolve the packaged native dependency.
+- The desktop app declares `NSBluetoothAlwaysUsageDescription`, since the server runs inside it.
+- Web and desktop only; the mobile app has no setting for it.
