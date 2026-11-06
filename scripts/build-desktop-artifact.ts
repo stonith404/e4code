@@ -2856,6 +2856,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           "T3 Code lets commands run by terminals and coding agents use the camera.",
         NSMicrophoneUsageDescription:
           "T3 Code lets commands run by terminals and coding agents use the microphone.",
+        NSBluetoothAlwaysUsageDescription:
+          "E4 Code shows your threads on a Clawdmeter desk display over Bluetooth.",
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
         CFBundleDocumentTypes: [

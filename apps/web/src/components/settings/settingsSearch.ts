@@ -674,6 +674,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["notification toast popup completion input approval failure"],
   },
   {
+    id: "clawdmeter",
+    title: "Clawdmeter",
+    to: "/settings/general",
+    searchTerms: ["desk display device bluetooth esp32 status tiles"],
+  },
+  {
     id: "time-format",
     title: "Time format",
     to: "/settings/general",
