@@ -2908,6 +2908,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           "E4 Code lets commands run by terminals and coding agents control other apps.",
         NSSpeechRecognitionUsageDescription:
           "T3 Code transcribes your dictation on this Mac when you choose Apple Speech.",
+        NSBluetoothAlwaysUsageDescription:
+          "E4 Code shows your threads on a Clawdmeter desk display over Bluetooth.",
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
         CFBundleDocumentTypes: [

@@ -335,6 +335,9 @@ overrides:
   '@react-navigation/core': 7.24.0
   unenv: 2.0.0-rc.24
   dbus-next>usocket: '-'
+  '@stoprocent/noble>@stoprocent/bluetooth-hci-socket': '-'
+  '@stoprocent/noble>dbus-next': '-'
+  '@stoprocent/noble>patch-package': '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-arm64': '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-x64': '-'
   '@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-linux-arm64': '-'
@@ -407,6 +410,7 @@ patchedDependencies:
   '@pierre/diffs@1.7.0-beta.4': 7edcdd484a99c7ec0b2667499c4cb21d113ec9bea1f8570c0b0a030d33bbf1cd
   '@react-native-menu/menu@2.0.0': 6872ba71b9847c5a0210b1b896923dadc3860faedfe28d9f062bcedfe786ef1d
   '@react-navigation/native-stack@7.21.0': 990d575444c4af2ce8218b3b7a8280fe244c03abbdb32b822a2e862f791dbf42
+  '@stoprocent/noble@2.8.0': ff9130623b1736a8adc5597f4e60a71cdde2f4fe89548c5a64948758fd9ece92
   '@vitest/browser@5.1.1': 92f36cbf5b1f90691fa696db358eaaf7be96c34fb051b218348437998005cf36
   '@zip.js/zip.js@2.25.0': cb3596293f7a8a6cfe3fade1ab0be9aa33accc3e96e14c1fc8e17bcd333fdb36
   alchemy@2.0.0-beta.85: 07cc8c7e14b3b9af143ddd40a059f117c27e55139fbf20bd5dde2eb30509cedd
@@ -909,6 +913,9 @@ importers:
       '@muse-code/sdk':
         specifier: 1.4.6
         version: 1.4.6(patch_hash=7b495b607fc5d76b444c7c4d58821e839726a30e6f3c53564f0d59f2d5b42101)(@types/node@24.12.4)
+      '@stoprocent/noble':
+        specifier: 2.8.0
+        version: 2.8.0(patch_hash=ff9130623b1736a8adc5597f4e60a71cdde2f4fe89548c5a64948758fd9ece92)(supports-color@8.1.1)
       '@t3tools/issue-tracker-jira':
         specifier: workspace:*
         version: link:../../packages/issue-tracker-jira
@@ -7066,6 +7073,10 @@ packages:
 
   '@statsig/js-client@3.31.0':
     resolution: {integrity: sha512-LFa5E0LjT6sTfZv3sNGoyRLSZ1078+agdgOA+Vm1ecjG+KbSOfBLTW7hMwimrJ29slRwbYDzbtKaPJo/R37N2g==}
+
+  '@stoprocent/noble@2.8.0':
+    resolution: {integrity: sha512-AceSTxZ+FmerIgBqP69sEq6T0jsqvzS6ou9Uq4dnvDo7LlGvZqLWFMQXD956K3ATo31uA8pyQAzli9MuFcdJ0w==}
+    engines: {node: '>=14'}
 
   '@stripe/stripe-js@5.6.0':
     resolution: {integrity: sha512-w8CEY73X/7tw2KKlL3iOk679V9bWseE4GzNz3zlaYxcTjmcmWOathRb0emgo/QQ3eoNzmq68+2Y2gxluAv3xGw==}
@@ -17183,6 +17194,14 @@ snapshots:
     dependencies:
       '@statsig/client-core': 3.31.0
 
+  '@stoprocent/noble@2.8.0(patch_hash=ff9130623b1736a8adc5597f4e60a71cdde2f4fe89548c5a64948758fd9ece92)(supports-color@8.1.1)':
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+      node-addon-api: 8.9.2
+      node-gyp-build: 4.8.4
+    transitivePeerDependencies:
+      - supports-color
+
   '@stripe/stripe-js@5.6.0': {}
 
   '@swc/helpers@0.5.21':
@@ -21891,8 +21910,7 @@ snapshots:
 
   node-addon-api@7.1.1: {}
 
-  node-addon-api@8.9.2:
-    optional: true
+  node-addon-api@8.9.2: {}
 
   node-api-version@0.2.1:
     dependencies:
@@ -21912,8 +21930,7 @@ snapshots:
 
   node-forge@1.4.3: {}
 
-  node-gyp-build@4.8.4:
-    optional: true
+  node-gyp-build@4.8.4: {}
 
   node-gyp@12.4.0:
     dependencies:
