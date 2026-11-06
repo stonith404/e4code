@@ -4,6 +4,7 @@ E4 Code is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code), ke
 
 - **Review**: review a thread's local changes file by file, with Reviewed and Check later marks, a generated review guide, and fixes typed straight into the diff.
 - **MCP servers**: Settings → MCP servers manages extra MCP servers for Claude and Codex, per environment or per project, including OAuth sign-in.
+- **Clawdmeter**: Settings → General → Clawdmeter shows your threads on a Clawdmeter desk display over Bluetooth, with Clawd pointing at threads that need you.
 
 Details for each patch are in [FORK_CHANGES.md](./FORK_CHANGES.md). The rest of this README is upstream's.
 
