@@ -73,3 +73,16 @@ Settings → MCP servers adds, edits, toggles and removes MCP servers per enviro
 
 UI copy and draft validation use upstream's translated settings APIs and catalogs, with English fallback for new entries.
 
+## feat(settings): show threads on a Clawdmeter desk display
+
+Settings → General → **Clawdmeter** shows the environment's threads on a [Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter) ESP32 display paired with its computer over Bluetooth, with no companion app.
+
+- `clawdmeterEnabled` in server settings (default off). `ClawdmeterService` follows it, so the server only loads `@stoprocent/noble` and touches Bluetooth while it is on.
+- `ClawdmeterLink` scans for the board's service, connects, writes JSON to its RX characteristic with response, and follows its TX (`dismiss`) and REQ (send everything again) notifications. It reconnects every 10 s while the board is away, and skips the disconnect call for a board that already left, since noble never settles it on macOS.
+- `ClawdmeterDisplay` turns the thread list into the firmware's sessions-only payload: up to six `ss` tiles, with states from `projectThreadAwarenessV2` (needs you, working, done for a minute, then idle until settled), `e`/`es` turn events, `m`/`x` alerts for pending requests and failed runs, and an `rp` heartbeat every minute.
+- Bluetooth bindings load on demand through `createRequire`, so standalone CLI builds can resolve the packaged native dependency.
+- The desktop app declares `NSBluetoothAlwaysUsageDescription`, since the server runs inside it.
+- Web and desktop only; the mobile app has no setting for it.
+
+The settings row and search index use upstream's translation hooks and catalogs, with English fallback for new entries.
+
