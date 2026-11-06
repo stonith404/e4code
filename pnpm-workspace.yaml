@@ -25,6 +25,8 @@ allowBuilds:
   objc-js: false
   "react-native-enriched-markdown@file:apps/mobile/deps/react-native-enriched-markdown-1.2.0-t3.18-0dc7ed81.tgz": true
   sharp: true
+  # Ships N-API prebuilds; its install script only rebuilds from source.
+  "@stoprocent/noble": false
   utf-8-validate: false
   workerd: false
 
@@ -140,6 +142,11 @@ overrides:
   # The dbus-next patch drops usocket from the package, but pnpm resolves from the
   # registry manifest, so the edge has to be cut here as well.
   "dbus-next>usocket": "-"
+  # The Clawdmeter link uses noble's macOS and Windows bindings; patch-package only serves its prebuild script.
+  # The noble patch drops the same edges from its manifest.
+  "@stoprocent/noble>@stoprocent/bluetooth-hci-socket": "-"
+  "@stoprocent/noble>dbus-next": "-"
+  "@stoprocent/noble>patch-package": "-"
   # The SDK always receives the user's Claude executable, so its bundled binaries are unused.
   "@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-arm64": "-"
   "@anthropic-ai/claude-agent-sdk>@anthropic-ai/claude-agent-sdk-darwin-x64": "-"
@@ -251,6 +258,7 @@ patchedDependencies:
   "@react-native-menu/menu@2.0.0": patches/@react-native-menu__menu@2.0.0.patch
   "@react-navigation/native-stack@7.21.0": patches/@react-navigation%2Fnative-stack@7.21.0.patch
   dbus-next@0.10.2: patches/dbus-next@0.10.2.patch
+  "@stoprocent/noble@2.8.0": patches/@stoprocent__noble@2.8.0.patch
   node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
   react-native-gesture-handler@3.5.0: patches/react-native-gesture-handler@3.5.0.patch
   # Screens v5 stack, split and tab screens leave at once, like legacy screens. Exiting animations
