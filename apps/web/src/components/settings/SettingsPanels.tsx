@@ -872,6 +872,22 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+        <SettingsRow
+          serverScoped
+          {...setting("clawdmeter")}
+          description={gt(
+            "Show this environment's threads on a Clawdmeter desk display paired with its computer over Bluetooth.",
+          )}
+          settingKeys={["clawdmeterEnabled"]}
+          control={
+            <ScopedSwitch
+              settingKeys={["clawdmeterEnabled"]}
+              checked={settings.clawdmeterEnabled}
+              onCheckedChange={(checked) => updateSettings({ clawdmeterEnabled: Boolean(checked) })}
+              aria-label={gt("Clawdmeter")}
+            />
+          }
+        />
       </SettingsSection>
 
       <SettingsSection id="sidebar" title={gt("Sidebar")}>
