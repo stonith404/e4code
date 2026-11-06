@@ -14,6 +14,7 @@ const CLI_RUNTIME_EXTERNAL_PREFIXES = [
   "koffi",
   "@koromix/",
   "@napi-rs/keyring",
+  "@stoprocent/",
   "@clerk/electron-passkeys",
   "node-gyp-build",
   "node-addon-api",
@@ -34,10 +35,15 @@ const CURSOR_RUNTIME_DEPENDENCIES = [
   "@fastify/busboy",
 ] as const;
 
+// Noble's runtime dependencies.
+const NOBLE_RUNTIME_DEPENDENCIES = ["debug", "ms"] as const;
+
 export function isRuntimeExternalCliDependency(id: string): boolean {
   return (
     CLI_RUNTIME_EXTERNAL_PREFIXES.some((prefix) => id.startsWith(prefix)) ||
-    CURSOR_RUNTIME_DEPENDENCIES.some((name) => id === name || id.startsWith(`${name}/`))
+    [...CURSOR_RUNTIME_DEPENDENCIES, ...NOBLE_RUNTIME_DEPENDENCIES].some(
+      (name) => id === name || id.startsWith(`${name}/`),
+    )
   );
 }
 
