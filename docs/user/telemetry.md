@@ -1,10 +1,10 @@
 # Product usage data and diagnostics
 
-T3 Code sends lightweight product usage events and relay connection traces to keep the app reliable and fast. Prompts, responses, file contents, and credentials are never included (unless you explicitly approve an [agent feedback](#agent-feedback) card with conversation text attached).
+E4 Code sends no product usage events unless `T3CODE_TELEMETRY_ENABLED=true`. E4 builds carry no relay tracing configuration. When enabled, product usage events help keep the app reliable and fast. Prompts, responses, file contents, and credentials are never included (unless you explicitly approve an [agent feedback](#agent-feedback) card with conversation text attached).
 
 ## Product usage events
 
-The server sends usage events to `ingest.t3.codes` under a hashed random install ID (plus a hashed T3 Connect account ID when signed in, and random client device IDs). Events contain provider, catalog model name (non-catalog models report as custom), reasoning effort, permission mode, turn/request outcome, duration, release channel, and token counts.
+When explicitly enabled, the server sends usage events to `ingest.t3.codes` under a hashed random install ID (plus a hashed T3 Connect account ID when signed in, and random client device IDs). Events contain provider, catalog model name (non-catalog models report as custom), reasoning effort, permission mode, turn/request outcome, duration, release channel, and token counts.
 
 ## Disable telemetry
 
