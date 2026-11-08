@@ -86,3 +86,7 @@ Settings → General → **Clawdmeter** shows the environment's threads on a [Cl
 
 The settings row and search index use upstream's translation hooks and catalogs, with English fallback for new entries.
 
+## feat(telemetry): turn product analytics off by default
+
+The server no longer sends product usage events to upstream's PostHog ingest unless `T3CODE_TELEMETRY_ENABLED=true`. `AnalyticsService` defaults the flag to false, and the onboarding and About copy say so. Relay and mobile tracing already stay off in E4 builds, which carry no relay tracing config.
+
