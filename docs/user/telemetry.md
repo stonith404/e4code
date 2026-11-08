@@ -1,6 +1,6 @@
 # Product usage data
 
-The T3 Code server sends product usage events to T3 Code's own endpoint at `ingest.t3.codes`,
+E4 Code sends no product usage events unless you set `T3CODE_TELEMETRY_ENABLED=true`. When enabled, the server sends product usage events to T3 Code's own endpoint at `ingest.t3.codes`,
 associated with a hashed random identifier for the installation. To count how many installations one person
 uses, the server also sends a hashed identifier for your T3 Connect account when you are signed in
 to one, and a random identifier for each device that connects. The endpoint keeps a copy of each
@@ -71,8 +71,8 @@ separate from product events. Traces carry connection timings, request paths, en
 thread identifiers, and error types. They omit machine addresses, query strings, log lines,
 error messages, and stack frames.
 
-To disable product events and relay tracing from the server, set
-`T3CODE_TELEMETRY_ENABLED=false` in its environment before starting it. Relay tracing also stops
+Product events and relay tracing are off unless the server's environment sets
+`T3CODE_TELEMETRY_ENABLED=true` before it starts. Relay tracing also stops
 when `T3CODE_OTEL_SDK_DISABLED` or `OTEL_SDK_DISABLED` turns OpenTelemetry export off.
 
 An administrator can turn product events and relay tracing off in the server and desktop app with
