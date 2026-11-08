@@ -478,7 +478,6 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
       const layerTelemetry = AnalyticsService.layer.pipe(Layer.provideMerge(layerServerConfig));
       const layerConfig = ConfigProvider.layer(
         ConfigProvider.fromUnknown({
-          T3CODE_TELEMETRY_ENABLED: false,
           T3CODE_TELEMETRY_KEY: "phc_test_key",
           T3CODE_TELEMETRY_HOST: "http://localhost",
         }),
