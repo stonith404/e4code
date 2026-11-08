@@ -77,3 +77,7 @@ Settings → General → **Clawdmeter** shows the environment's threads on a [Cl
 - Bluetooth bindings load on demand through `createRequire`, so standalone CLI builds can resolve the packaged native dependency.
 - The desktop app declares `NSBluetoothAlwaysUsageDescription`, since the server runs inside it.
 - Web and desktop only; the mobile app has no setting for it.
+
+## feat(telemetry): turn product analytics off by default
+
+The server no longer sends product usage events to upstream's PostHog ingest unless `T3CODE_TELEMETRY_ENABLED=true`. `AnalyticsService` defaults the flag to false, and the onboarding and About copy say so. Relay and mobile tracing already stay off in E4 builds, which carry no relay tracing config.
