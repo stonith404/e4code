@@ -1144,6 +1144,7 @@ function ThreadRouteContent(
         offersSideChat={composer.sideChatUnavailableReason === null}
         onSendCommand={composer.onSendCommand}
         onReconnectEnvironment={handleReconnectEnvironment}
+        onUpdateThreadInteractionMode={composer.onUpdateInteractionMode}
         canSwitchThreadProvider={composer.canSwitchThreadProvider}
         onRespondToApproval={requests.onRespondToApproval}
         onSelectUserInputOption={requests.onSelectUserInputOption}

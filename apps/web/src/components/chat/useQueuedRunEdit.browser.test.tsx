@@ -178,6 +178,8 @@ function Harness(props: {
       pendingAction={null}
       isRunning={false}
       canInterrupt={false}
+      showPlanFollowUpPrompt={false}
+      promptHasText={draft.prompt.trim().length > 0}
       isSendBusy={result.isSaving}
       sendDisabledReason={null}
       isEnvironmentUnavailable={false}
@@ -187,6 +189,7 @@ function Harness(props: {
       onSubmitMessage={() => void result.saveEdit(savedContent(draft.prompt), () => {})}
       onPreviousPendingQuestion={() => {}}
       onInterrupt={() => {}}
+      onImplementPlanInNewThread={() => {}}
     />
   ) : null;
 }
