@@ -10,6 +10,7 @@ import {
   ProviderInstanceId,
   type ServerProvider,
   type ThreadId,
+  ProviderInteractionMode,
   RuntimeMode,
 } from "@t3tools/contracts";
 import type { deriveThreadStructureRuntime } from "@t3tools/client-runtime/state/thread-execution";
@@ -44,6 +45,8 @@ interface ComposerSelectionInput {
   readonly supportsProviderSwitchingViaHandoff: boolean;
   readonly multipleModelSelections: ReadonlyArray<ModelSelection> | null;
   readonly runtimeMode: RuntimeMode;
+  readonly interactionMode: ProviderInteractionMode;
+  readonly interactionModeEnabled: boolean;
   readonly isLocalDraftThread: boolean;
   readonly canOverrideServerThreadEnvMode: boolean;
   readonly setPendingServerThreadEnvModeEntry: Dispatch<
@@ -56,7 +59,7 @@ interface ComposerSelectionInput {
 }
 
 /**
- * The composer's choices for the next turn: provider and model, runtime mode,
+ * The composer's choices for the next turn: provider and model, runtime and interaction mode,
  * and where a new thread runs (local or a new worktree, from the remote's tip or not).
  */
 export function useComposerSelection(input: ComposerSelectionInput) {
@@ -73,6 +76,8 @@ export function useComposerSelection(input: ComposerSelectionInput) {
     supportsProviderSwitchingViaHandoff,
     multipleModelSelections,
     runtimeMode,
+    interactionMode,
+    interactionModeEnabled,
     isLocalDraftThread,
     canOverrideServerThreadEnvMode,
     setPendingServerThreadEnvModeEntry,
@@ -85,6 +90,9 @@ export function useComposerSelection(input: ComposerSelectionInput) {
   );
   const setComposerDraftModelSelection = useComposerDraftStore((store) => store.setModelSelection);
   const setComposerDraftRuntimeMode = useComposerDraftStore((store) => store.setRuntimeMode);
+  const setComposerDraftInteractionMode = useComposerDraftStore(
+    (store) => store.setInteractionMode,
+  );
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
   const applyThreadModelPick = useApplyThreadModelPick();
 
@@ -98,6 +106,21 @@ export function useComposerSelection(input: ComposerSelectionInput) {
   };
   const handleRuntimeModeChangeStable = useStableCallback(handleRuntimeModeChange);
 
+  const handleInteractionModeChange = (mode: ProviderInteractionMode) => {
+    if (mode === "plan" && !interactionModeEnabled) return;
+    if (mode === interactionMode) return;
+    setComposerDraftInteractionMode(composerDraftTarget, mode);
+    if (isLocalDraftThread) {
+      setDraftThreadContext(composerDraftTarget, { interactionMode: mode });
+    }
+    scheduleComposerFocus();
+  };
+  const handleInteractionModeChangeStable = useStableCallback(handleInteractionModeChange);
+  const toggleInteractionMode = () => {
+    if (!interactionModeEnabled) return;
+    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
+  };
+  const toggleInteractionModeStable = useStableCallback(toggleInteractionMode);
   const openProviderSetup = (instanceId: ProviderInstanceId) => {
     void navigate({
       to: "/settings/providers",
@@ -258,10 +281,13 @@ export function useComposerSelection(input: ComposerSelectionInput) {
   };
   return {
     getModelDisabledReason,
+    handleInteractionModeChange,
+    handleInteractionModeChangeStable,
     handleRuntimeModeChangeStable,
     onEnvModeChangeStable,
     onProviderModelSelectStable,
     onStartFromOriginChange,
     openProviderSetupStable,
+    toggleInteractionModeStable,
   };
 }
