@@ -135,6 +135,14 @@ Type `/` for commands or `$` for skills from the selected environment and provid
 - After adding or changing skills, plugins, or MCP servers, run **Restart agent session** from the command palette so your next message picks up the new config.
 - Turn on **Settings → Appearance → Thread details → Context window** to view reported context usage. For automatic idle compaction on Claude, see [compact long conversations](./providers-claude.md#compact-long-conversations).
 
+## Plan mode
+
+Switch a thread between **Build** and **Plan** with the toggle beside the model picker,
+**Shift+Tab**, `/plan`, or `/default`. In Plan mode the agent proposes a plan instead of
+changing files. Leave the composer empty and choose **Implement** to build it, or **Implement
+in a new thread** to start fresh, or type feedback and choose **Refine**. Providers without
+their own plan mode don't show the toggle.
+
 ## Goals
 
 With Codex, Claude, and OpenCode 2.2.5+, send `/goal <criteria>` (for example, `/goal all tests in packages/api pass`) so the agent keeps working across turns until the goal is met.

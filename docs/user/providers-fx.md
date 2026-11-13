@@ -37,3 +37,5 @@ All fx instances on a machine share that machine's fx login.
 
 - **Sub-agents**: Shown as child threads with their task and summarized reply (individual steps are hidden). fx does not forward sub-agent permission prompts—use **Auto** or **Full access** so sub-agents don't stall waiting for approval.
 - **Not supported**: **Auto-accept edits**, and T3 Code text generation (titles, commit messages, PR descriptions, branch names)—pick another provider for those.
+
+Plan mode is not supported.

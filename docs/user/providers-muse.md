@@ -20,3 +20,5 @@ Run [Muse Code](https://dev.meta.ai/docs/muse-code) on your T3 Code server. Muse
 - **Skills**: Muse loads its own skills (`muse skills` on the host); they do not appear in the composer's `$` menu.
 - **Forks & rewind**: Forking starts a new session with copied conversation context; conversation rewind is not supported.
 - **T3 tools**: Muse can use T3 Code's MCP tools when reachable (turns continue without them if unavailable).
+
+Muse does not offer a separate Plan mode in T3 Code.

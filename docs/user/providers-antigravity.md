@@ -55,3 +55,5 @@ Add a separate Antigravity instance in **Settings → Providers** for each Googl
 - T3 Code does not read your Google account's Antigravity allowances; **Usage** shows tokens and cost from Antigravity's local history.
 - Use **Refresh provider status** (web/desktop) or **Refresh models** (mobile) to reload models and access.
 - For `SUBSCRIPTION_REQUIRED` or account restriction errors, see [Google's account plans](https://antigravity.google/docs/plans).
+
+T3 Code's separate Plan mode is unavailable; use Antigravity's native `/plan` command.

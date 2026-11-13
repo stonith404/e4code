@@ -43,3 +43,5 @@ File reads and searches never wait for approval. Devin runs commands in T3 Code 
 ## Checkpoints
 
 Checkpoint rollback restores workspace files as usual. Because ACP agents cannot rewind their own conversation, the next turn starts a fresh session with the kept conversation history.
+
+Agents with their own plan and build modes follow T3 Code's Plan and Build toggle.
