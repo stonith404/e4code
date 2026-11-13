@@ -36,7 +36,6 @@ import { KeyboardController, KeyboardStickyView } from "react-native-keyboard-co
 
 import {
   AuthOrchestrationOperateScope,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   resolveEnvironmentMachineKind,
 } from "@t3tools/contracts";
@@ -1050,7 +1049,7 @@ export function NewTaskDraftScreen(props: {
       threadId: ThreadId.make(creationMetadata.threadId),
       modelSelection: flow.selectedModel,
       runtimeMode: flow.runtimeMode,
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+      interactionMode: flow.interactionMode,
       branch: flow.selectedBranchName,
       worktreePath: flow.selectedWorktreePath,
       createdAt: creationMetadata.createdAt,
@@ -1129,6 +1128,7 @@ export function NewTaskDraftScreen(props: {
         onSendCommand={async () => null}
         onReconnectEnvironment={() => onReconnectEnvironment(selectedProject.environmentId)}
         canSwitchThreadProvider
+        onUpdateThreadInteractionMode={flow.planModeEnabled ? flow.setInteractionMode : undefined}
         onRespondToApproval={async () => {}}
         onSelectUserInputOption={() => {}}
         onChangeUserInputCustomAnswer={() => {}}
