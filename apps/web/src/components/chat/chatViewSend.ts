@@ -2,6 +2,7 @@ import {
   CommandId,
   type EnvironmentId,
   type ModelSelection,
+  type ProviderInteractionMode,
   type ScopedThreadRef,
   type ThreadId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
@@ -41,6 +42,7 @@ import { getComposerPromptInjectionState, getComposerProviderState } from "./com
 import {
   formatOutgoingPrompt,
   getAntigravitySendBlockReason,
+  resolveComposerInteractionMode,
   cloneComposerImageForRetry,
   type ComposerSendSnapshot,
   readFileAsDataUrl,
@@ -298,6 +300,7 @@ export function restoreComposerDraft(
 export interface MultipleModelTarget {
   readonly selection: ModelSelection;
   readonly text: string;
+  readonly interactionMode: ProviderInteractionMode;
 }
 
 /**
@@ -308,6 +311,7 @@ export function resolveMultipleModelTargets(input: {
   readonly selections: ReadonlyArray<ModelSelection>;
   readonly providerInstanceEntries: ReadonlyArray<ProviderInstanceEntry>;
   readonly messageText: string;
+  readonly interactionMode: ProviderInteractionMode;
 }): Array<MultipleModelTarget | { readonly error: string }> {
   const { messageText } = input;
   return input.selections.map((selection) => {
@@ -339,6 +343,10 @@ export function resolveMultipleModelTargets(input: {
         effort: providerState.promptEffort,
         text: messageText || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
       }),
+      interactionMode: resolveComposerInteractionMode({
+        provider: provider.snapshot,
+        interactionMode: input.interactionMode,
+      }).interactionMode,
     };
   });
 }
