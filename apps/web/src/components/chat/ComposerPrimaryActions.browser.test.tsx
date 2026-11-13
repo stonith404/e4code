@@ -28,8 +28,11 @@ function setup() {
     isEnvironmentUnavailable: false,
     isPreparingWorktree: false,
     hasSendableContent: false,
+    showPlanFollowUpPrompt: false,
+    promptHasText: false,
     onPreviousPendingQuestion: vi.fn(),
     onInterrupt: vi.fn(),
+    onImplementPlanInNewThread: vi.fn(),
     onResume: vi.fn(),
     onSubmitMessage: vi.fn(),
   } satisfies ComponentProps<typeof ComposerPrimaryActions>;
