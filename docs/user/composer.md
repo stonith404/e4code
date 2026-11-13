@@ -284,7 +284,7 @@ session** in the command palette on web and desktop. The conversation continues,
 and your next message starts the agent again with the new setup.
 
 Provider commands must start the message to run. T3 Code commands such as
-`/model` and skill mentions work on any line.
+`/model` and `/plan`, and skill mentions, work on any line.
 
 Send `/compact` in an existing conversation to reduce context usage when the
 provider supports it.
@@ -301,6 +301,14 @@ once the provider reports usage.
 
 Claude instances can also compact idle threads for you. See
 [compact long conversations](./providers-claude.md#compact-long-conversations).
+
+## Plan mode
+
+Switch a thread between **Build** and **Plan** with the toggle beside the model picker,
+**Shift+Tab**, `/plan`, or `/default`. In Plan mode the agent proposes a plan instead of
+changing files. Leave the composer empty and choose **Implement** to build it, or **Implement
+in a new thread** to start fresh, or type feedback and choose **Refine**. Providers without
+their own plan mode don't show the toggle.
 
 ## Goals
 
