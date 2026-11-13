@@ -81,3 +81,13 @@ Settings → General → **Clawdmeter** shows the environment's threads on a [Cl
 ## feat(telemetry): turn product analytics off by default
 
 The server no longer sends product usage events to upstream's PostHog ingest unless `T3CODE_TELEMETRY_ENABLED=true`. `AnalyticsService` defaults the flag to false, and the onboarding and About copy say so. Relay and mobile tracing already stay off in E4 builds, which carry no relay tracing config.
+
+## feat(composer): bring back plan mode
+
+Upstream's #33131 dropped plan mode from the composer along with its Labs toggle. This patch restores the plan-mode parts of that commit and always offers them, so there is no setting.
+
+- Web: the Build/Plan chip in the composer and its overflow menu, `/plan` and `/default`, Shift+Tab, the plan follow-up banner, and Implement, Refine and Implement in a new thread (`useProposedPlanSend`). Queued, resumed and multi-model sends carry the thread's interaction mode again.
+- Mobile: `/plan` and `/default` on threads and New task, and sends use the draft's interaction mode. `resolveProviderInteractionMode` in `thread-outbox-model` is exported for this.
+- Providers with `showInteractionModeToggle: false` still run in build mode and show no toggle.
+- The OpenCode plan agent stays hidden from the traits picker unless selected, as upstream has it.
+- User docs: a Plan mode section in `composer.md` and the per-provider notes.

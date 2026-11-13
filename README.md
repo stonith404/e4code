@@ -6,6 +6,7 @@ E4 Code is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code), ke
 - **MCP servers**: Settings → MCP servers manages extra MCP servers for Claude and Codex, per environment or per project, including OAuth sign-in.
 - **No usage analytics**: E4 Code sends no product usage events unless you opt in with `T3CODE_TELEMETRY_ENABLED=true`.
 - **Clawdmeter**: Settings → General → Clawdmeter shows your threads on a Clawdmeter desk display over Bluetooth, with Clawd pointing at threads that need you.
+- **Plan mode**: switch a thread to Plan with the composer's Build/Plan toggle, Shift+Tab or `/plan`, then implement or refine the proposed plan. Upstream removed it; E4 Code keeps it on for every provider that supports it.
 
 Details for each patch are in [FORK_CHANGES.md](./FORK_CHANGES.md). The rest of this README is upstream's.
 
