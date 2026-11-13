@@ -110,8 +110,8 @@ export interface ThreadSettingsSnapshot {
 }
 
 // Providers without a Build/Plan toggle always run in build mode.
-function resolveProviderInteractionMode(
-  provider: Pick<ServerProvider, "showInteractionModeToggle"> | undefined,
+export function resolveProviderInteractionMode(
+  provider: Pick<ServerProvider, "showInteractionModeToggle"> | null | undefined,
   interactionMode: ProviderInteractionModeType,
 ): ProviderInteractionModeType {
   return provider?.showInteractionModeToggle === false
